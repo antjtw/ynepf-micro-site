@@ -8,15 +8,16 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="/assets/css/fonts.css">
-  <link rel="stylesheet" href="/assets/css/tokens.css">
-  <link rel="stylesheet" href="/assets/css/base.css">
-  <link rel="stylesheet" href="/assets/css/components.css">
+  <link rel="stylesheet" href="assets/css/fonts.css">
+  <link rel="stylesheet" href="assets/css/tokens.css">
+  <link rel="stylesheet" href="assets/css/base.css">
+  <link rel="stylesheet" href="assets/css/components.css">
 </head>
 <body data-page="faqs">
   <a class="skip-link" href="#main">Skip to main content</a>
 
-  <div class="service-banner">
+  <!-- @partial:header start -->
+<div class="service-banner">
   <div class="container">
     <span class="tag-alpha">Alpha</span>
     <p>This is a new service. For urgent matters, please visit <a href="https://www.ynepf.co.uk">ynepf.co.uk</a>.</p>
@@ -24,8 +25,8 @@
 </div>
 <header class="site-header">
   <div class="container">
-    <a class="brand" href="/index.html" data-nav="home">
-      <img class="brand-mark-img" src="/assets/img/logo-white.svg" alt="" width="48" height="48" aria-hidden="true">
+    <a class="brand" href="index.html" data-nav="home">
+      <img class="brand-mark-img" src="assets/img/logo-white.svg" alt="" width="48" height="48" aria-hidden="true">
       <span class="brand-name">
         <span>Yorkshire &amp; North East</span>
         <span>Powerlifting Federation</span>
@@ -37,20 +38,21 @@
     </button>
     <nav class="site-nav" id="primary-nav" aria-label="Primary">
       <ul>
-        <li><a href="/committee.html" data-nav="committee">Committee</a></li>
-        <li><a href="/calendar.html" data-nav="calendar">Calendar</a></li>
-        <li><a href="/volunteering.html" data-nav="volunteering">Volunteering</a></li>
-        <li><a href="/initiatives.html" data-nav="initiatives">2026 initiatives</a></li>
-        <li><a href="/faqs.html" data-nav="faqs" aria-current="page">FAQs</a></li>
+        <li><a href="committee.html" data-nav="committee">Committee</a></li>
+        <li><a href="calendar.html" data-nav="calendar">Calendar</a></li>
+        <li><a href="volunteering.html" data-nav="volunteering">Volunteering</a></li>
+        <li><a href="initiatives.html" data-nav="initiatives">2026 initiatives</a></li>
+        <li><a href="faqs.html" data-nav="faqs" aria-current="page">FAQs</a></li>
       </ul>
     </nav>
   </div>
 </header>
+<!-- @partial:header end -->
 
   <nav class="breadcrumbs" aria-label="Breadcrumb">
     <div class="container">
       <ol>
-        <li><a href="/index.html">Home</a></li>
+        <li><a href="index.html">Home</a></li>
         <li class="sep" aria-hidden="true">&rsaquo;</li>
         <li aria-current="page">FAQs</li>
       </ol>
@@ -97,7 +99,7 @@
         <details>
           <summary>What equipment will be on the platform?</summary>
           <div class="faq-body">
-            <p>On the competition platform we use an Eleiko rack with a soft-pad bench, and Eleiko bars. At the Implexus Open we use the host club's rack and bars.</p>
+            <p>On the competition platform we use an Eleiko rack with a soft-pad bench, and Eleiko bars. At franchise competitions, run by clubs rather than the Federation, other IPF-approved racks, bars, plates or collars may be used.</p>
             <p>In the warm-up area, every venue has adjustable racks, power bars and calibrated plates.</p>
           </div>
         </details>
@@ -138,7 +140,7 @@
           <summary>Can I volunteer at a competition?</summary>
           <div class="faq-body">
             <p>Yes, and we would love your help. Volunteers take on roles such as setting up, taking down, refereeing, platform crew, the table team and MC. You do not need experience. We give every volunteer a full briefing before you start.</p>
-            <p>When you volunteer, you earn points you can spend on future competitions. See how it works on the <a href="/volunteering.html">volunteer points page</a>.</p>
+            <p>When you volunteer, you earn points you can spend on future competitions. See how it works on the <a href="volunteering.html">volunteer points page</a>.</p>
           </div>
         </details>
         <details>
@@ -238,11 +240,13 @@
     </div>
   </main>
 
-  <footer class="site-footer">
+  <!-- @partial:footer start -->
+<footer class="site-footer">
   <div class="container">
     <p style="margin:0;">&copy; Yorkshire &amp; North East Powerlifting Federation 2026</p>
   </div>
 </footer>
-  <script src="/assets/js/nav.js" defer></script>
+<!-- @partial:footer end -->
+  <script src="assets/js/nav.js" defer></script>
 </body>
 </html>

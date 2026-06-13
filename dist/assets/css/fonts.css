@@ -1,0 +1,16 @@
+/* ==========================================================================
+   Fonts
+   - Headings: Cutmark (variable font, self-hosted). Axes: wght 100–1000,
+     wdth 40–100, slnt 0–12. We use it at display weights only.
+   - Body: IBM Plex Sans, loaded via the Google Fonts link in each page <head>.
+   ========================================================================== */
+
+@font-face {
+  font-family: "Cutmark";
+  src: url("/assets/fonts/CutmarkVariableGX.ttf") format("truetype-variations"),
+       url("/assets/fonts/CutmarkVariableGX.ttf") format("truetype");
+  font-weight: 100 1000;
+  font-stretch: 40% 100%;
+  font-style: oblique 0deg 12deg;
+  font-display: swap;
+}

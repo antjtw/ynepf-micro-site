@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Volunteer points system — YNEPF</title>
+  <meta name="description" content="How the YNEPF volunteer points system works: how to earn points and how to spend them on priority entry, discounts and memberships.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/assets/css/fonts.css">
+  <link rel="stylesheet" href="/assets/css/tokens.css">
+  <link rel="stylesheet" href="/assets/css/base.css">
+  <link rel="stylesheet" href="/assets/css/components.css">
+</head>
+<body data-page="volunteering">
+  <a class="skip-link" href="#main">Skip to main content</a>
+
+  <!--#include header-->
+
+  <nav class="breadcrumbs" aria-label="Breadcrumb">
+    <div class="container">
+      <ol>
+        <li><a href="/index.html">Home</a></li>
+        <li class="sep" aria-hidden="true">›</li>
+        <li aria-current="page">Volunteer points system</li>
+      </ol>
+    </div>
+  </nav>
+
+  <main id="main">
+    <div class="container">
+      <h1>Volunteer points system</h1>
+      <p class="lede">A points system for volunteers, designed to recognise your time. Scotland and Wales already run this approach, letting volunteers earn priority access and discounts on competitions and memberships.</p>
+
+      <div class="tabs" data-tabs>
+        <div role="tablist" class="tablist" aria-label="Volunteer points">
+          <button role="tab" id="tab-earn" aria-controls="panel-earn" aria-selected="true">Earning points</button>
+          <button role="tab" id="tab-spend" aria-controls="panel-spend" aria-selected="false" tabindex="-1">Spending points</button>
+        </div>
+
+        <!-- Earning -->
+        <section role="tabpanel" id="panel-earn" aria-labelledby="tab-earn" tabindex="0">
+          <h2 style="margin-top:0;">Earning points</h2>
+          <p>Volunteer points are based on the role and how long you give:</p>
+          <ul>
+            <li>Set up <em>or</em> take down: 1 point each</li>
+            <li>Set up <em>and</em> take down: 2 points total</li>
+            <li>Session role (refereeing, platform crew, table team, MC): 1 point</li>
+            <li>Ad hoc volunteering, outside competition: 1 to 3 points. The committee decides based on the size of the task.</li>
+          </ul>
+          <p>Points stack. Volunteer for two sessions and you earn 4 points.</p>
+
+          <h3>Committee roles</h3>
+          <p>Executive and committee members receive 3 points for each quarter of service after 6 months, with points awarded retroactively from that point.</p>
+
+          <h3>Banking points</h3>
+          <p>Points can be banked for 24 months. After that, they expire 24 months after being earned.</p>
+        </section>
+
+        <!-- Spending -->
+        <section role="tabpanel" id="panel-spend" aria-labelledby="tab-spend" tabindex="0" hidden>
+          <h2 style="margin-top:0;">Spending points</h2>
+          <p>You can spend points in several ways, from early access to competition entries through to a free British Powerlifting membership.</p>
+          <ul>
+            <li>Priority entry: 1 point</li>
+            <li>£20 off competition entry: 4 points</li>
+            <li>£20 off, with priority entry: 5 points</li>
+            <li>£40 off competition entry: 8 points</li>
+            <li>£40 off, with priority entry: 9 points</li>
+            <li>Half-price BP membership: 5 points</li>
+            <li>Free BP membership: 10 points</li>
+          </ul>
+
+          <h3>Accessing points</h3>
+          <p>Points are kept up to date on a rewards tracker, available in a public spreadsheet.</p>
+          <ul>
+            <li>Priority entry email links are sent to all volunteers 24 hours ahead of general entry</li>
+            <li>Half-price or free competition entry is issued as a discount code on request by email</li>
+            <li>Memberships can be partially or fully refunded on request by email, with proof of purchase</li>
+          </ul>
+
+          <h3>Further spending</h3>
+          <p>We are discussing options for gift cards and discount codes with our federation partners.</p>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <!--#include footer-->
+
+  <script src="/assets/js/includes.js" defer></script>
+  <script src="/assets/js/nav.js" defer></script>
+  <script src="/assets/js/tabs.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,93 @@
+/* ==========================================================================
+   YNEPF design tokens
+   Source palette: Iron Oxide, Slate Navy, Golden Sandstone, Neutral Grey,
+   Sage Green, Soft Rose (Figma "Light theme").
+   Roles below are mapped to meet WCAG 2.1 AA. Ratios noted inline are against
+   the surface the token is intended to sit on. Light theme only for now.
+   ========================================================================== */
+
+:root {
+  /* ---- Raw source ramps (do not consume these directly in components) ---- */
+  --iron-00: #FFFFFF;  --iron-10: #FEF7F4; --iron-50: #F9EDE7; --iron-100: #F3D4C6;
+  --iron-200: #EBB79D; --iron-300: #E09774; --iron-500: #C55432; --iron-600: #AA482C;
+  --iron-700: #8B3C25; --iron-800: #6A2F1E; --iron-900: #4B2217;
+
+  --navy-00: #FFFFFF;  --navy-10: #F6F8FA; --navy-50: #E8EDF2; --navy-100: #C9D4E0;
+  --navy-200: #A7B9CC; --navy-300: #849EB7; --navy-500: #45698B; --navy-600: #32526F;
+  --navy-700: #203F5B; --navy-800: #152C41; --navy-900: #07121A;
+
+  --grey-00: #FFFFFF;  --grey-10: #F7F8F8; --grey-50: #F2F3F3; --grey-100: #DCDDDE;
+  --grey-200: #C5C7C8; --grey-300: #AEB1B2; --grey-400: #979A9B; --grey-500: #7F8283;
+  --grey-600: #6B6D6E; --grey-700: #585A5B; --grey-800: #3E4041; --grey-900: #242525;
+
+  --sage-50: #E8F6EB; --sage-100: #D5EEDC; --sage-500: #6BB882; --sage-600: #4C8F62;
+  --sage-700: #3D724E; --sage-800: #2C5238;
+
+  --rose-50: #FCEAEA; --rose-100: #F6D6D6; --rose-500: #CF7174; --rose-600: #C85B5B;
+  --rose-700: #A54848; --rose-800: #7C3535;
+
+  --gold-50: #F7F2E7; --gold-100: #EFE3C9; --gold-500: #B89344; --gold-600: #9C7836;
+  --gold-700: #7D5F2A; --gold-800: #5E4820;
+
+  /* ---- Semantic roles (consume these in components) ---- */
+
+  /* Surfaces */
+  --surface-page: var(--grey-00);             /* main page background */
+  --surface-raised: var(--grey-00);           /* cards on white */
+  --surface-muted: var(--navy-50);            /* breadcrumb + footer band */
+  --surface-hero: var(--navy-50);             /* tinted hero band (initiatives) */
+  --surface-inverse: var(--navy-800);         /* header bar, dark hero */
+
+  /* Text — all on white unless noted */
+  --text-default: var(--grey-900);            /* 15.4:1 */
+  --text-muted: var(--grey-700);              /* 6.9:1  */
+  --text-on-inverse: #FFFFFF;                 /* 14.3:1 on navy-800 */
+  --text-on-muted: var(--navy-800);           /* 12.1:1 on navy-50 */
+
+  /* Links */
+  --link: var(--navy-700);                    /* 10.9:1 */
+  --link-hover: var(--navy-900);
+  --link-visited: var(--iron-700);            /* 7.6:1  */
+
+  /* Accent / primary action */
+  --accent: var(--iron-600);                  /* white text => 5.7:1 */
+  --accent-hover: var(--iron-700);            /* white text => 7.6:1 */
+  --accent-text: #FFFFFF;
+  --accent-soft: var(--iron-500);             /* decorative only, never text bg */
+
+  /* Borders + focus */
+  --border: var(--grey-100);
+  --border-strong: var(--grey-200);
+  --focus: var(--gold-500);                   /* gold focus ring, GDS-style */
+  --focus-text: var(--grey-900);
+
+  /* Status tags (dark text on light tint) */
+  --tag-open-bg: var(--sage-100);   --tag-open-text: var(--sage-800);   /* 7.2:1 */
+  --tag-closed-bg: var(--grey-100); --tag-closed-text: var(--grey-800); /* 7.7:1 */
+  --tag-position-bg: var(--rose-100); --tag-position-text: var(--rose-800); /* 6.4:1 */
+  --tag-alpha-bg: var(--navy-100);  --tag-alpha-text: var(--navy-800);  /* 9.5:1 */
+
+  /* Pastel icon tiles (dark glyph on tint) */
+  --tile-iron-bg: var(--iron-100);  --tile-iron-fg: var(--iron-700);   /* 5.4:1 */
+  --tile-navy-bg: var(--navy-100);  --tile-navy-fg: var(--navy-700);   /* 7.3:1 */
+  --tile-rose-bg: var(--rose-100);  --tile-rose-fg: var(--rose-800);   /* 6.4:1 */
+  --tile-grey-bg: var(--grey-100);  --tile-grey-fg: var(--grey-800);   /* 7.7:1 */
+
+  /* Table */
+  --table-stripe: var(--navy-50);
+  --table-head-border: var(--grey-900);
+
+  /* Spacing scale */
+  --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem;
+  --space-5: 1.5rem; --space-6: 2rem; --space-7: 3rem; --space-8: 4rem;
+
+  /* Layout */
+  --measure: 38rem;          /* readable text column */
+  --container: 60rem;        /* page max width */
+  --radius: 6px;
+  --radius-lg: 10px;
+
+  /* Type */
+  --font-body: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Cutmark", "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+}

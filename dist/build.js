@@ -29,8 +29,11 @@ const FTR = ["<!-- @partial:footer start -->", "<!-- @partial:footer end -->"];
 
 const pages = [
   "index.html", "committee.html", "calendar.html", "volunteering.html",
-  "initiatives.html", "faqs.html",
+  "initiatives.html", "faqs.html", "rules.html",
   "initiatives/entry-fees.html", "initiatives/yne-worlds.html",
+  "rules/the-lifts.html", "rules/squat.html", "rules/bench-press.html",
+  "rules/deadlift.html", "rules/categories.html", "rules/kit.html",
+  "rules/weigh-in.html",
 ];
 
 // Depth-relative prefix: number of "/" in the page path = how many ../ needed.

@@ -443,6 +443,85 @@ table.data th[scope="row"] { font-weight: 600; }
   transform: rotate(-45deg);
 }
 
+/* ---- Plain-English notice ---- */
+.notice {
+  border-left: 4px solid var(--accent);
+  background: var(--iron-10);
+  padding: var(--space-4) var(--space-5);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  margin: 0 0 var(--space-6);
+  max-width: var(--measure);
+}
+.notice p { margin: 0; }
+.notice strong { color: var(--text-default); }
+
+/* ---- Steps list (numbered, how to perform a lift) ---- */
+ol.steps { counter-reset: step; list-style: none; padding-left: 0; max-width: var(--measure); }
+ol.steps li {
+  position: relative;
+  padding-left: 3rem;
+  margin-bottom: var(--space-4);
+  min-height: 2rem;
+}
+ol.steps li::before {
+  counter-increment: step;
+  content: counter(step);
+  position: absolute;
+  left: 0; top: 0;
+  width: 2rem; height: 2rem;
+  background: var(--navy-700);
+  color: #fff;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+/* ---- Fail list (why a lift fails) ---- */
+.fail-list { list-style: none; padding-left: 0; max-width: var(--measure); }
+.fail-list li {
+  position: relative;
+  padding-left: 2rem;
+  margin-bottom: var(--space-3);
+}
+.fail-list li::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0.45em;
+  width: 1.1rem; height: 1.1rem;
+  background: var(--rose-600);
+  border-radius: 50%;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M7 7l10 10M17 7L7 17' stroke='white' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-size: 0.9rem;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+/* ---- Rules sub-page card grid (hub) ---- */
+.rule-cards {
+  list-style: none; margin: 0; padding: 0;
+  max-width: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: var(--space-4);
+}
+.rule-cards li { margin: 0; }
+.rule-card {
+  display: block;
+  height: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  text-decoration: none;
+  color: var(--text-default);
+  background: var(--surface-raised);
+  transition: border-color 0.12s ease, transform 0.12s ease;
+}
+.rule-card:hover { border-color: var(--navy-300); transform: translateY(-2px); color: var(--text-default); }
+.rule-card:visited { color: var(--text-default); }
+.rule-card h3 { margin: 0 0 var(--space-2); font-size: 1.15rem; color: var(--link); }
+.rule-card p { margin: 0; font-size: 0.98rem; color: var(--text-muted); }
+
 /* ---- Site footer ---- */
 .site-footer {
   background: var(--surface-muted);

@@ -529,9 +529,8 @@ ol.steps li::before {
   overflow-x: auto;
   scroll-snap-type: x proximity;
   padding-bottom: var(--space-4);
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-6);
   -webkit-overflow-scrolling: touch;
-  /* let cards bleed to the viewport edge beyond the container */
   scrollbar-color: var(--navy-300) transparent;
 }
 .carousel::-webkit-scrollbar { height: 8px; }
@@ -543,7 +542,7 @@ ol.steps li::before {
   width: 240px;
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: 8px;
   scroll-snap-align: start;
 }
 .person-card .photo {
@@ -553,6 +552,11 @@ ol.steps li::before {
   border-radius: var(--radius);
   display: block;
   background: var(--navy-50);
+}
+.person-card .p-head {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
 }
 .person-card .p-name {
   font-weight: 700;
@@ -581,11 +585,11 @@ ol.steps li::before {
 .person-card .p-social:hover { background: var(--accent-hover); color: #fff; }
 .person-card .p-social svg { width: 18px; height: 18px; }
 
-/* On wide screens, let the carousels run to the right viewport edge */
+/* Carousels fill the container, then bleed off the right edge while staying
+   scrollable and visible (never clipped). */
 @media (min-width: 60rem) {
   .carousel-bleed {
-    margin-right: calc((100vw - var(--container)) / -2 - var(--space-5));
-    padding-right: var(--space-5);
+    margin-right: calc((100vw - var(--container)) / -2);
   }
 }
 

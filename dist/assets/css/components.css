@@ -526,6 +526,9 @@ ol.steps li::before {
 .carousel {
   display: flex;
   gap: var(--space-5);
+  list-style: none;
+  max-width: none;
+  padding-left: 0;
   overflow-x: auto;
   scroll-snap-type: x proximity;
   padding-bottom: var(--space-4);
@@ -585,12 +588,11 @@ ol.steps li::before {
 .person-card .p-social:hover { background: var(--accent-hover); color: #fff; }
 .person-card .p-social svg { width: 18px; height: 18px; }
 
-/* Carousels fill the container, then bleed off the right edge while staying
-   scrollable and visible (never clipped). */
-@media (min-width: 60rem) {
-  .carousel-bleed {
-    margin-right: calc((100vw - var(--container)) / -2);
-  }
+/* The carousel starts at the container's left edge (its natural position) and
+   bleeds off only the right, running to the viewport edge. It uses the full
+   available width and cards are never clipped. */
+.carousel-bleed {
+  margin-right: calc(50% - 50vw);
 }
 
 /* ---- Site footer ---- */

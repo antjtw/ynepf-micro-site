@@ -591,8 +591,11 @@ ol.steps li::before {
 /* The carousel starts at the container's left edge (its natural position) and
    bleeds off only the right, running to the viewport edge. It uses the full
    available width and cards are never clipped. */
+/* The carousel stays within the container. It scrolls internally, so the
+   first card rests at the container's left edge and the last at the right,
+   with the same margin on both sides. */
 .carousel-bleed {
-  margin-right: calc(50% - 50vw);
+  margin-right: 0;
 }
 
 /* ---- Site footer ---- */

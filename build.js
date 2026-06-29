@@ -27,9 +27,6 @@ const HDR = ["<!-- @partial:header start -->", "<!-- @partial:header end -->"];
 const FTR = ["<!-- @partial:footer start -->", "<!-- @partial:footer end -->"];
 
 const pages = [
-  "index.html", "committee.html", "calendar.html", "volunteering.html",
-  "initiatives.html", "faqs.html", "rules.html",
-  "initiatives/entry-fees.html", "initiatives/yne-worlds.html",
   "rules/the-lifts.html",
   "rules/categories.html",
   "rules/squat.html",

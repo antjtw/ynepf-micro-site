@@ -27,8 +27,7 @@ ynepf/
 │   └── partials/
 │       ├── header.html     Single source of truth for the header
 │       └── footer.html     Single source of truth for the footer
-├── build.js                Inlines partials into a static dist/ build
-└── dist/                   The built, deployable site (run build.js to refresh)
+├── build.js                Inlines the shared header/footer into every page
 ```
 
 ## How the shared header and footer work
@@ -55,15 +54,15 @@ node build.js
 ```
 
 The build re-inlines the current partials into all pages (idempotent — safe to
-run repeatedly) and refreshes the `dist/` copy. You can deploy either the
-project root or `dist/`; both are static and self-contained.
+run repeatedly) . Deploy the project root. The top-level files are the site — they are static, self-contained, and use relative paths.
 
 ## Deploying
 
-Upload the contents of `dist/` to any static host (Netlify, GitHub Pages,
+Upload the **project root** to any static host (Netlify, GitHub Pages,
 Cloudflare Pages, S3, etc.). No server-side code or build pipeline is required
-on the host — `dist/` is already fully built. If your host supports a build
-command, set it to `node build.js` and the publish directory to `dist`.
+on the host — the top-level files are the finished site. All paths are
+relative, so it works wherever it is served from, and even when a file is
+opened straight from disk.
 
 ## Typography
 

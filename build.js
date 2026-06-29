@@ -19,7 +19,6 @@ const fs = require("fs");
 const path = require("path");
 
 const ROOT = __dirname;
-const DIST = path.join(ROOT, "dist");
 
 const header = fs.readFileSync(path.join(ROOT, "assets/partials/header.html"), "utf8").trim();
 const footer = fs.readFileSync(path.join(ROOT, "assets/partials/footer.html"), "utf8").trim();
@@ -92,24 +91,12 @@ function reinline(html, root) {
   return html;
 }
 
-function copyDir(from, to) {
-  fs.mkdirSync(to, { recursive: true });
-  for (const e of fs.readdirSync(from, { withFileTypes: true })) {
-    if (e.name === "dist" || e.name === "node_modules") continue;
-    const s = path.join(from, e.name), d = path.join(to, e.name);
-    if (e.isDirectory()) copyDir(s, d);
-    else fs.copyFileSync(s, d);
-  }
-}
-
-// 1. Re-inline partials into source pages
+// Re-inline partials into source pages. The top-level files are the site —
+// they are self-contained and use relative paths, so deploy the project root.
 pages.forEach((rel) => {
   const p = path.join(ROOT, rel);
   fs.writeFileSync(p, reinline(fs.readFileSync(p, "utf8"), rootFor(rel)), "utf8");
   console.log("inlined", rel);
 });
 
-// 2. Build dist/
-fs.rmSync(DIST, { recursive: true, force: true });
-copyDir(ROOT, DIST);
-console.log("\nBuilt dist/. Deploy the dist/ folder, or open any page directly — both work.");
+console.log("\nDone. The top-level files are the site — deploy the project root.");

@@ -522,6 +522,73 @@ ol.steps li::before {
 .rule-card h3 { margin: 0 0 var(--space-2); font-size: 1.15rem; color: var(--link); }
 .rule-card p { margin: 0; font-size: 0.98rem; color: var(--text-muted); }
 
+/* ---- Committee carousels ---- */
+.carousel {
+  display: flex;
+  gap: var(--space-5);
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  padding-bottom: var(--space-4);
+  margin-bottom: var(--space-4);
+  -webkit-overflow-scrolling: touch;
+  /* let cards bleed to the viewport edge beyond the container */
+  scrollbar-color: var(--navy-300) transparent;
+}
+.carousel::-webkit-scrollbar { height: 8px; }
+.carousel::-webkit-scrollbar-thumb { background: var(--navy-300); border-radius: 4px; }
+.carousel::-webkit-scrollbar-track { background: var(--grey-50); border-radius: 4px; }
+
+.person-card {
+  flex: 0 0 240px;
+  width: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  scroll-snap-align: start;
+}
+.person-card .photo {
+  width: 240px;
+  height: 296px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  display: block;
+  background: var(--navy-50);
+}
+.person-card .p-name {
+  font-weight: 700;
+  font-size: 1.05rem;
+  margin: 0;
+  color: var(--text-default);
+}
+.person-card .p-role {
+  margin: 0;
+  color: var(--text-muted);
+}
+.person-card .p-blurb {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--text-default);
+}
+.person-card .p-social {
+  display: inline-flex;
+  width: 32px; height: 32px;
+  align-items: center; justify-content: center;
+  background: var(--accent);
+  color: #fff;
+  border-radius: var(--radius);
+  margin-top: auto;
+}
+.person-card .p-social:hover { background: var(--accent-hover); color: #fff; }
+.person-card .p-social svg { width: 18px; height: 18px; }
+
+/* On wide screens, let the carousels run to the right viewport edge */
+@media (min-width: 60rem) {
+  .carousel-bleed {
+    margin-right: calc((100vw - var(--container)) / -2 - var(--space-5));
+    padding-right: var(--space-5);
+  }
+}
+
 /* ---- Site footer ---- */
 .site-footer {
   background: var(--surface-muted);

@@ -55,7 +55,7 @@
     }
 
     .container {
-      max-width: 68rem;
+      max-width: 52rem;
       margin: 0 auto;
       padding: 0 1rem;
     }
@@ -64,49 +64,11 @@
     .banner {
       background: var(--bg-band);
       border-bottom: 1px solid var(--line);
-      padding: 2.5rem 0;
     }
-    .banner-inner {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 1.5rem;
-    }
-    .banner-date {
-      font-family: var(--font-display);
-      font-variation-settings: "wght" 700, "wdth" 100;
-      font-size: clamp(1.5rem, 4vw, 2rem);
-      line-height: 1.1;
-      letter-spacing: 0.02em;
-    }
-    .banner-date span { display: block; color: var(--text-muted); font-size: 0.75rem; letter-spacing: 0.15em; margin-top: 0.35rem; }
-    .banner-wordmark {
-      font-family: var(--font-display);
-      font-variation-settings: "wght" 800, "wdth" 100;
-      font-size: clamp(2rem, 7vw, 4rem);
-      letter-spacing: 0.02em;
-      margin: 0;
-      text-align: center;
-      flex: 1 1 auto;
-    }
-    .banner-wordmark .hi { color: var(--accent); }
-    .banner-meta {
-      text-align: right;
-      font-size: 0.75rem;
-      letter-spacing: 0.1em;
-      color: var(--text-muted);
-      line-height: 1.6;
-    }
-    .banner-meta strong { display: block; color: var(--text); letter-spacing: 0.05em; }
-    .venue {
-      border-top: 1px solid var(--line);
-      margin-top: 1.5rem;
-      padding-top: 1rem;
-      font-size: 0.8rem;
-      letter-spacing: 0.1em;
-      color: var(--text-muted);
-      text-transform: uppercase;
+    .banner img {
+      display: block;
+      width: 100%;
+      height: auto;
     }
 
     main { padding: 2rem 0 4rem; }
@@ -202,35 +164,26 @@
       border-bottom: 1px solid var(--line);
     }
     table.lifters tbody tr:last-child td { border-bottom: none; }
-    table.lifters td.flight-cell { color: var(--accent); font-weight: 700; width: 3rem; }
-    table.lifters td.age-cell, table.lifters td.class-cell, table.lifters td.glp-cell { white-space: nowrap; }
+    table.lifters th.flight-cell, table.lifters td.flight-cell { color: var(--accent); font-weight: 700; width: 1%; white-space: nowrap; }
+    table.lifters th.age-cell, table.lifters td.age-cell,
+    table.lifters th.class-cell, table.lifters td.class-cell,
+    table.lifters th.glp-cell, table.lifters td.glp-cell { width: 1%; white-space: nowrap; }
     table.lifters td.glp-cell { text-align: right; font-variant-numeric: tabular-nums; }
-    .name-cell { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+    .name-cell { display: flex; align-items: center; gap: 0.5rem; flex-wrap: nowrap; white-space: nowrap; }
     .name-link { color: var(--text); font-weight: 600; text-decoration: none; border-bottom: 1px solid transparent; }
     .name-link:hover, .name-link:focus-visible { color: var(--accent); border-bottom-color: currentColor; }
     .ig-link { display: inline-flex; color: var(--text-muted); }
     .ig-link:hover, .ig-link:focus-visible { color: var(--accent); }
     .ig-link svg { width: 16px; height: 16px; display: block; }
 
-    /* Mobile: collapse table to stacked cards */
+    /* Small screens: rows stay on one line, table scrolls horizontally instead of wrapping */
+    .table-scroll {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
     @media (max-width: 640px) {
-      .session-head { border-radius: 6px 6px 0 0; }
-      table.lifters thead { display: none; }
-      table.lifters, table.lifters tbody, table.lifters tr, table.lifters td { display: block; width: 100%; }
-      table.lifters tr { padding: 0.75rem 1.25rem; border-bottom: 1px solid var(--line); }
-      table.lifters tr:last-child { border-bottom: none; }
-      table.lifters td { padding: 0.15rem 0; border-bottom: none; }
-      table.lifters td::before {
-        content: attr(data-label);
-        display: inline-block;
-        min-width: 5rem;
-        color: var(--text-muted);
-        font-size: 0.7rem;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-      }
-      table.lifters td.flight-cell { display: none; }
-      .name-cell { padding-left: 0; }
+      table.lifters { font-size: 0.85rem; }
+      table.lifters th, table.lifters td { padding: 0.5rem 0.75rem; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -242,17 +195,7 @@
   <a class="skip-link" href="#main">Skip to main content</a>
 
   <div class="banner">
-    <div class="container">
-      <div class="banner-inner">
-        <div class="banner-date">07–08 NOV<span>2026</span></div>
-        <h2 class="banner-wordmark">YNE <span class="hi">WORLDS</span> 26</h2>
-        <div class="banner-meta">
-          <strong>British Powerlifting</strong>
-          Yorkshire &amp; the North East
-        </div>
-      </div>
-      <p class="venue">Riccall Regen Centre, Riccall</p>
-    </div>
+    <img src="assets/img/banner.png" alt="YNE Worlds 26, 7–08 November 2026, Riccall Regen Centre, Riccall. British Powerlifting, Yorkshire &amp; the North East.">
   </div>
 
   <main id="main">
@@ -337,8 +280,8 @@
               var rows = days[day][session][flight];
               html += '<div class="flight-block">';
               html += '<p class="flight-label">Flight ' + esc(flight) + '</p>';
-              html += '<table class="lifters"><caption>Flight ' + esc(flight) + ' lifting order</caption>';
-              html += '<thead><tr><th scope="col">Flight</th><th scope="col">Name</th><th scope="col">Age class</th><th scope="col">Weight class</th><th scope="col">GLP</th></tr></thead>';
+              html += '<div class="table-scroll"><table class="lifters"><caption>Flight ' + esc(flight) + ' lifting order</caption>';
+              html += '<thead><tr><th scope="col" class="flight-cell">Flight</th><th scope="col">Name</th><th scope="col" class="age-cell">Age</th><th scope="col" class="class-cell">Class</th><th scope="col" class="glp-cell">GLP</th></tr></thead>';
               html += '<tbody>';
               rows.forEach(function (l) {
                 var nameHtml = l.openIpf
@@ -350,12 +293,12 @@
                 html += "<tr>";
                 html += '<td class="flight-cell" data-label="Flight">' + esc(flight) + "</td>";
                 html += '<td data-label="Name"><span class="name-cell">' + nameHtml + igHtml + "</span></td>";
-                html += '<td class="age-cell" data-label="Age class">' + esc(l.age) + "</td>";
-                html += '<td class="class-cell" data-label="Weight class">' + esc(l.class) + "</td>";
+                html += '<td class="age-cell" data-label="Age">' + esc(l.age) + "</td>";
+                html += '<td class="class-cell" data-label="Class">' + esc(l.class) + "</td>";
                 html += '<td class="glp-cell" data-label="GLP">' + esc(formatGlp(l.glp)) + "</td>";
                 html += "</tr>";
               });
-              html += "</tbody></table></div>";
+              html += "</tbody></table></div></div>";
             });
 
             html += "</div>";

@@ -179,7 +179,10 @@
     table.lifters th.age-cell, table.lifters td.age-cell,
     table.lifters th.class-cell, table.lifters td.class-cell,
     table.lifters th.glp-cell, table.lifters td.glp-cell { width: 1%; white-space: nowrap; }
-    table.lifters td.glp-cell { text-align: right; font-variant-numeric: tabular-nums; }
+    table.lifters th.age-cell, table.lifters td.age-cell,
+    table.lifters th.class-cell, table.lifters td.class-cell { text-align: center; }
+    table.lifters th.glp-cell, table.lifters td.glp-cell { text-align: right; }
+    table.lifters td.glp-cell { font-variant-numeric: tabular-nums; }
     .name-cell { display: flex; align-items: center; gap: 0.5rem; flex-wrap: nowrap; white-space: nowrap; }
     .name-link { color: var(--text); font-weight: 600; text-decoration: none; border-bottom: 1px solid transparent; }
     .name-link:hover, .name-link:focus-visible { color: var(--accent); border-bottom-color: currentColor; }

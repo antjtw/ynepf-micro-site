@@ -222,6 +222,9 @@
         "1-2": { weighIn: "Noon", liftOff: "2:00pm" },
         "2-1": { weighIn: "9:30am", liftOff: "11:30am" }
       };
+      var SESSION_LABELS = {
+        "2-1": "Prime time"
+      };
 
       var IG_ICON =
         '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
@@ -272,7 +275,8 @@
           sessionKeys.forEach(function (session) {
             var times = SESSION_TIMES[day + "-" + session];
             html += '<div class="session-block">';
-            html += '<div class="session-head"><span class="session-title">Session ' + session + '</span></div>';
+            var sessionLabel = SESSION_LABELS[day + "-" + session] || ("Session " + session);
+            html += '<div class="session-head"><span class="session-title">' + esc(sessionLabel) + '</span></div>';
             if (times) {
               html += '<div class="session-times">Weigh-in <strong>' + esc(times.weighIn) + '</strong> &nbsp;·&nbsp; Lift off <strong>' + esc(times.liftOff) + '</strong></div>';
             }

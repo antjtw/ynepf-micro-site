@@ -281,7 +281,7 @@
               html += '<div class="flight-block">';
               html += '<p class="flight-label">Flight ' + esc(flight) + '</p>';
               html += '<div class="table-scroll"><table class="lifters"><caption>Flight ' + esc(flight) + ' lifting order</caption>';
-              html += '<thead><tr><th scope="col" class="flight-cell">Flight</th><th scope="col">Name</th><th scope="col" class="age-cell">Age class</th><th scope="col" class="class-cell">Weight class</th><th scope="col" class="glp-cell">GLP</th></tr></thead>';
+              html += '<thead><tr><th scope="col" class="flight-cell">Flight</th><th scope="col">Name</th><th scope="col" class="age-cell">Age</th><th scope="col" class="class-cell">Class</th><th scope="col" class="glp-cell">GLP</th></tr></thead>';
               html += '<tbody>';
               rows.forEach(function (l) {
                 var nameHtml = l.openIpf
@@ -293,8 +293,8 @@
                 html += "<tr>";
                 html += '<td class="flight-cell" data-label="Flight">' + esc(flight) + "</td>";
                 html += '<td data-label="Name"><span class="name-cell">' + nameHtml + igHtml + "</span></td>";
-                html += '<td class="age-cell" data-label="Age class">' + esc(l.age) + "</td>";
-                html += '<td class="class-cell" data-label="Weight class">' + esc(l.class) + "</td>";
+                html += '<td class="age-cell" data-label="Age">' + esc(l.age) + "</td>";
+                html += '<td class="class-cell" data-label="Class">' + esc(l.class) + "</td>";
                 html += '<td class="glp-cell" data-label="GLP">' + esc(formatGlp(l.glp)) + "</td>";
                 html += "</tr>";
               });

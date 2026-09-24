@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lifting order — YNE Worlds 26</title>
+  <meta name="description" content="Flight-by-flight lifting order for YNE Worlds 26, 7–8 November 2026, Riccall Regen Centre.">
+  <meta name="robots" content="noindex">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="assets/css/fonts.css">
+  <style>
+    :root {
+      --bg: #0B0C0D;
+      --bg-raised: #16181A;
+      --bg-band: #000000;
+      --line: #2A2D30;
+      --text: #F5F5F3;
+      --text-muted: #A7ABAF;
+      --accent: #E4FF3D;
+      --font-body: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+      --font-display: "Cutmark", "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+    }
+    body {
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.5;
+    }
+    .skip-link {
+      position: absolute;
+      left: -999px;
+      top: 0;
+      background: var(--accent);
+      color: #000;
+      padding: 0.5rem 1rem;
+      font-weight: 600;
+      z-index: 10;
+    }
+    .skip-link:focus {
+      left: 0.5rem;
+      top: 0.5rem;
+    }
+    a { color: var(--accent); }
+    a:focus-visible, button:focus-visible {
+      outline: 3px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .container {
+      max-width: 68rem;
+      margin: 0 auto;
+      padding: 0 1rem;
+    }
+
+    /* Banner */
+    .banner {
+      background: var(--bg-band);
+      border-bottom: 1px solid var(--line);
+      padding: 2.5rem 0;
+    }
+    .banner-inner {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.5rem;
+    }
+    .banner-date {
+      font-family: var(--font-display);
+      font-variation-settings: "wght" 700, "wdth" 100;
+      font-size: clamp(1.5rem, 4vw, 2rem);
+      line-height: 1.1;
+      letter-spacing: 0.02em;
+    }
+    .banner-date span { display: block; color: var(--text-muted); font-size: 0.75rem; letter-spacing: 0.15em; margin-top: 0.35rem; }
+    .banner-wordmark {
+      font-family: var(--font-display);
+      font-variation-settings: "wght" 800, "wdth" 100;
+      font-size: clamp(2rem, 7vw, 4rem);
+      letter-spacing: 0.02em;
+      margin: 0;
+      text-align: center;
+      flex: 1 1 auto;
+    }
+    .banner-wordmark .hi { color: var(--accent); }
+    .banner-meta {
+      text-align: right;
+      font-size: 0.75rem;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+    .banner-meta strong { display: block; color: var(--text); letter-spacing: 0.05em; }
+    .venue {
+      border-top: 1px solid var(--line);
+      margin-top: 1.5rem;
+      padding-top: 1rem;
+      font-size: 0.8rem;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    main { padding: 2rem 0 4rem; }
+
+    h1 {
+      font-family: var(--font-display);
+      font-variation-settings: "wght" 700, "wdth" 90;
+      font-size: clamp(1.5rem, 3vw, 2rem);
+      margin: 0 0 0.25rem;
+    }
+    .lede { color: var(--text-muted); margin: 0 0 2rem; max-width: 42rem; }
+
+    .status {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+    .status[hidden] { display: none; }
+    .error {
+      background: #3A1414;
+      border: 1px solid #6B2323;
+      color: #FFD8D8;
+      padding: 1rem 1.25rem;
+      border-radius: 6px;
+      margin-bottom: 2rem;
+    }
+
+    .day-block { margin-bottom: 3rem; }
+    .day-heading {
+      font-family: var(--font-display);
+      font-variation-settings: "wght" 700, "wdth" 95;
+      font-size: 1.35rem;
+      letter-spacing: 0.02em;
+      margin: 0 0 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid var(--accent);
+    }
+
+    .session-block { margin-bottom: 2rem; }
+    .session-head {
+      background: #000;
+      padding: 0.75rem 1.25rem;
+      border-radius: 6px 6px 0 0;
+      font-weight: 700;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 1rem;
+      align-items: baseline;
+    }
+    .session-head .session-title { font-size: 1rem; }
+    .session-times {
+      text-align: center;
+      background: var(--bg-raised);
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      padding: 0.6rem 1rem;
+      border-left: 1px solid var(--line);
+      border-right: 1px solid var(--line);
+    }
+    .session-times strong { color: var(--text); font-weight: 600; }
+
+    .flight-block {
+      background: var(--bg-raised);
+      border: 1px solid var(--line);
+      border-top: none;
+    }
+    .flight-block:last-child { border-radius: 0 0 6px 6px; }
+    .flight-label {
+      padding: 0.6rem 1.25rem 0;
+      font-size: 0.75rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    table.lifters {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.95rem;
+    }
+    table.lifters caption { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+    table.lifters th, table.lifters td {
+      padding: 0.6rem 1.25rem;
+      text-align: left;
+      border-bottom: 1px solid var(--line);
+      vertical-align: middle;
+    }
+    table.lifters thead th {
+      font-size: 0.75rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      font-weight: 600;
+      border-bottom: 1px solid var(--line);
+    }
+    table.lifters tbody tr:last-child td { border-bottom: none; }
+    table.lifters td.flight-cell { color: var(--accent); font-weight: 700; width: 3rem; }
+    table.lifters td.age-cell, table.lifters td.class-cell, table.lifters td.glp-cell { white-space: nowrap; }
+    table.lifters td.glp-cell { text-align: right; font-variant-numeric: tabular-nums; }
+    .name-cell { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+    .name-link { color: var(--text); font-weight: 600; text-decoration: none; border-bottom: 1px solid transparent; }
+    .name-link:hover, .name-link:focus-visible { color: var(--accent); border-bottom-color: currentColor; }
+    .ig-link { display: inline-flex; color: var(--text-muted); }
+    .ig-link:hover, .ig-link:focus-visible { color: var(--accent); }
+    .ig-link svg { width: 16px; height: 16px; display: block; }
+
+    /* Mobile: collapse table to stacked cards */
+    @media (max-width: 640px) {
+      .session-head { border-radius: 6px 6px 0 0; }
+      table.lifters thead { display: none; }
+      table.lifters, table.lifters tbody, table.lifters tr, table.lifters td { display: block; width: 100%; }
+      table.lifters tr { padding: 0.75rem 1.25rem; border-bottom: 1px solid var(--line); }
+      table.lifters tr:last-child { border-bottom: none; }
+      table.lifters td { padding: 0.15rem 0; border-bottom: none; }
+      table.lifters td::before {
+        content: attr(data-label);
+        display: inline-block;
+        min-width: 5rem;
+        color: var(--text-muted);
+        font-size: 0.7rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      table.lifters td.flight-cell { display: none; }
+      .name-cell { padding-left: 0; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { scroll-behavior: auto !important; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+
+  <div class="banner">
+    <div class="container">
+      <div class="banner-inner">
+        <div class="banner-date">07–08 NOV<span>2026</span></div>
+        <h2 class="banner-wordmark">YNE <span class="hi">WORLDS</span> 26</h2>
+        <div class="banner-meta">
+          <strong>British Powerlifting</strong>
+          Yorkshire &amp; the North East
+        </div>
+      </div>
+      <p class="venue">Riccall Regen Centre, Riccall</p>
+    </div>
+  </div>
+
+  <main id="main">
+    <div class="container">
+      <h1>Lifting order</h1>
+      <p class="lede">Flight-by-flight running order for both days of competition. Refreshed daily from the entries sheet.</p>
+
+      <p class="status" id="status">Loading lifting order…</p>
+      <div id="content"></div>
+    </div>
+  </main>
+
+  <script src="assets/js/lifting-order-data.js"></script>
+  <script>
+    (function () {
+      var DAY_META = {
+        1: "Saturday 7 November 2026",
+        2: "Sunday 8 November 2026"
+      };
+      var SESSION_TIMES = {
+        "1-1": { weighIn: "8:00am", liftOff: "10:00am" },
+        "1-2": { weighIn: "Noon", liftOff: "2:00pm" },
+        "2-1": { weighIn: "9:30am", liftOff: "11:30am" }
+      };
+
+      var IG_ICON =
+        '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+        '<rect x="2.5" y="2.5" width="19" height="19" rx="5" stroke="currentColor" stroke-width="1.8"/>' +
+        '<circle cx="12" cy="12" r="4.3" stroke="currentColor" stroke-width="1.8"/>' +
+        '<circle cx="17.4" cy="6.6" r="1.1" fill="currentColor"/>' +
+        '</svg>';
+
+      function esc(s) {
+        return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+          return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+        });
+      }
+
+      function formatGlp(v) {
+        if (v == null) return "";
+        return Number(v).toFixed(2).replace(/\.00$/, "").replace(/(\.\d)0$/, "$1");
+      }
+
+      function render(lifters) {
+        var statusEl = document.getElementById("status");
+        var contentEl = document.getElementById("content");
+
+        if (!lifters || !lifters.length) {
+          statusEl.textContent = "No lifting order data is available right now.";
+          return;
+        }
+
+        // Group: day -> session -> flight -> [lifters], preserving sheet order within a flight.
+        var days = {};
+        lifters.forEach(function (l) {
+          if (l.day == null || l.session == null || !l.flight) return;
+          days[l.day] = days[l.day] || {};
+          days[l.day][l.session] = days[l.day][l.session] || {};
+          days[l.day][l.session][l.flight] = days[l.day][l.session][l.flight] || [];
+          days[l.day][l.session][l.flight].push(l);
+        });
+
+        var dayKeys = Object.keys(days).map(Number).sort(function (a, b) { return a - b; });
+        var html = "";
+
+        dayKeys.forEach(function (day) {
+          var dayLabel = DAY_META[day] || ("Day " + day);
+          html += '<section class="day-block" aria-labelledby="day-' + day + '-heading">';
+          html += '<h2 class="day-heading" id="day-' + day + '-heading">Day ' + day + ' — ' + esc(dayLabel) + '</h2>';
+
+          var sessionKeys = Object.keys(days[day]).map(Number).sort(function (a, b) { return a - b; });
+          sessionKeys.forEach(function (session) {
+            var times = SESSION_TIMES[day + "-" + session];
+            html += '<div class="session-block">';
+            html += '<div class="session-head"><span class="session-title">Session ' + session + '</span></div>';
+            if (times) {
+              html += '<div class="session-times">Weigh-in <strong>' + esc(times.weighIn) + '</strong> &nbsp;·&nbsp; Lift off <strong>' + esc(times.liftOff) + '</strong></div>';
+            }
+
+            var flightKeys = Object.keys(days[day][session]).sort();
+            flightKeys.forEach(function (flight) {
+              var rows = days[day][session][flight];
+              html += '<div class="flight-block">';
+              html += '<p class="flight-label">Flight ' + esc(flight) + '</p>';
+              html += '<table class="lifters"><caption>Flight ' + esc(flight) + ' lifting order</caption>';
+              html += '<thead><tr><th scope="col">Flight</th><th scope="col">Name</th><th scope="col">Age class</th><th scope="col">Weight class</th><th scope="col">GLP</th></tr></thead>';
+              html += '<tbody>';
+              rows.forEach(function (l) {
+                var nameHtml = l.openIpf
+                  ? '<a class="name-link" href="' + esc(l.openIpf) + '" target="_blank" rel="noopener">' + esc(l.name) + '</a>'
+                  : '<span class="name-link">' + esc(l.name) + '</span>';
+                var igHtml = l.instagram
+                  ? '<a class="ig-link" href="https://www.instagram.com/' + esc(l.instagram) + '/" target="_blank" rel="noopener" aria-label="' + esc(l.name) + ' on Instagram">' + IG_ICON + '</a>'
+                  : "";
+                html += "<tr>";
+                html += '<td class="flight-cell" data-label="Flight">' + esc(flight) + "</td>";
+                html += '<td data-label="Name"><span class="name-cell">' + nameHtml + igHtml + "</span></td>";
+                html += '<td class="age-cell" data-label="Age class">' + esc(l.age) + "</td>";
+                html += '<td class="class-cell" data-label="Weight class">' + esc(l.class) + "</td>";
+                html += '<td class="glp-cell" data-label="GLP">' + esc(formatGlp(l.glp)) + "</td>";
+                html += "</tr>";
+              });
+              html += "</tbody></table></div>";
+            });
+
+            html += "</div>";
+          });
+
+          html += "</section>";
+        });
+
+        contentEl.innerHTML = html;
+
+        var generated = window.LIFTING_ORDER_DATA && window.LIFTING_ORDER_DATA.generatedAt;
+        statusEl.textContent = generated
+          ? "Last updated " + new Date(generated).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" }) + "."
+          : "";
+      }
+
+      if (window.LIFTING_ORDER_DATA && window.LIFTING_ORDER_DATA.lifters) {
+        render(window.LIFTING_ORDER_DATA.lifters);
+      } else {
+        var statusEl = document.getElementById("status");
+        var contentEl = document.getElementById("content");
+        statusEl.setAttribute("hidden", "");
+        contentEl.innerHTML = '<p class="error">Lifting order data failed to load. Try refreshing the page.</p>';
+      }
+    })();
+  </script>
+</body>
+</html>

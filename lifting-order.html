@@ -164,7 +164,6 @@
       border-bottom: 1px solid var(--line);
     }
     table.lifters tbody tr:last-child td { border-bottom: none; }
-    table.lifters th.flight-cell, table.lifters td.flight-cell { color: var(--accent); font-weight: 700; width: 1%; white-space: nowrap; }
     table.lifters th.age-cell, table.lifters td.age-cell,
     table.lifters th.class-cell, table.lifters td.class-cell,
     table.lifters th.glp-cell, table.lifters td.glp-cell { width: 1%; white-space: nowrap; }
@@ -281,7 +280,7 @@
               html += '<div class="flight-block">';
               html += '<p class="flight-label">Flight ' + esc(flight) + '</p>';
               html += '<div class="table-scroll"><table class="lifters"><caption>Flight ' + esc(flight) + ' lifting order</caption>';
-              html += '<thead><tr><th scope="col" class="flight-cell">Flight</th><th scope="col">Name</th><th scope="col" class="age-cell">Age</th><th scope="col" class="class-cell">Class</th><th scope="col" class="glp-cell">GLP</th></tr></thead>';
+              html += '<thead><tr><th scope="col">Name</th><th scope="col" class="age-cell">Age</th><th scope="col" class="class-cell">Class</th><th scope="col" class="glp-cell">GLP</th></tr></thead>';
               html += '<tbody>';
               rows.forEach(function (l) {
                 var nameHtml = l.openIpf
@@ -291,7 +290,6 @@
                   ? '<a class="ig-link" href="https://www.instagram.com/' + esc(l.instagram) + '/" target="_blank" rel="noopener" aria-label="' + esc(l.name) + ' on Instagram">' + IG_ICON + '</a>'
                   : "";
                 html += "<tr>";
-                html += '<td class="flight-cell" data-label="Flight">' + esc(flight) + "</td>";
                 html += '<td data-label="Name"><span class="name-cell">' + nameHtml + igHtml + "</span></td>";
                 html += '<td class="age-cell" data-label="Age">' + esc(l.age) + "</td>";
                 html += '<td class="class-cell" data-label="Class">' + esc(l.class) + "</td>";

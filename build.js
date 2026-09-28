@@ -96,4 +96,35 @@ pages.forEach((rel) => {
   console.log("inlined", rel);
 });
 
+// Splice in CMS-managed fragments (written by scripts/fetch-*.js from
+// Contentful) between marker comments, the same way header/footer partials
+// are inlined above. If a fragment file doesn't exist yet — Contentful
+// hasn't been configured — the page's existing hardcoded content between
+// the markers is left exactly as-is.
+const CMS_FRAGMENTS = [
+  { file: "faqs.html", tag: "cms:faqs", source: "assets/data/faqs-content.html" },
+  { file: "committee.html", tag: "cms:committee", source: "assets/data/committee-content.html" },
+  { file: "calendar.html", tag: "cms:competitions", source: "assets/data/competitions-content.html" },
+];
+
+function spliceMarker(html, tag, replacement) {
+  const start = `<!-- @${tag} start -->`;
+  const end = `<!-- @${tag} end -->`;
+  const re = new RegExp(
+    start.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "[\\s\\S]*?" + end.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  );
+  if (!re.test(html)) return html;
+  return html.replace(re, `${start}\n${replacement}\n${end}`);
+}
+
+CMS_FRAGMENTS.forEach(({ file, tag, source }) => {
+  const sourcePath = path.join(ROOT, source);
+  if (!fs.existsSync(sourcePath)) return; // Contentful not configured yet.
+  const filePath = path.join(ROOT, file);
+  const fragment = fs.readFileSync(sourcePath, "utf8").trim();
+  const html = fs.readFileSync(filePath, "utf8");
+  fs.writeFileSync(filePath, spliceMarker(html, tag, fragment), "utf8");
+  console.log("inlined CMS content into", file);
+});
+
 console.log("\nDone. The top-level files are the site — deploy the project root.");

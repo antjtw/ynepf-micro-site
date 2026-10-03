@@ -258,6 +258,14 @@
         return Number(v).toFixed(2).replace(/\.00$/, "").replace(/(\.\d)0$/, "$1");
       }
 
+      // "F57" -> 57, "M120+" -> 120.5 (so the + class sorts just above its base weight)
+      function classWeight(cls) {
+        var m = /(\d+(?:\.\d+)?)(\+)?\s*$/.exec(cls || "");
+        if (!m) return Infinity;
+        var n = parseFloat(m[1]);
+        return m[2] ? n + 0.5 : n;
+      }
+
       function render(lifters) {
         var statusEl = document.getElementById("status");
         var contentEl = document.getElementById("content");
@@ -298,6 +306,13 @@
             var flightKeys = Object.keys(days[day][session]).sort();
             flightKeys.forEach(function (flight) {
               var rows = days[day][session][flight];
+              if (sessionLabel !== "Prime time") {
+                rows = rows.slice().sort(function (a, b) {
+                  var byClass = classWeight(a.class) - classWeight(b.class);
+                  if (byClass !== 0) return byClass;
+                  return (b.glp == null ? -Infinity : b.glp) - (a.glp == null ? -Infinity : a.glp);
+                });
+              }
               html += '<div class="flight-block">';
               html += '<p class="flight-label">Flight ' + esc(flight) + '</p>';
               html += '<div class="table-scroll"><table class="lifters"><caption>Flight ' + esc(flight) + ' lifting order</caption>';

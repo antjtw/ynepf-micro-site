@@ -1,0 +1,48 @@
+name: Update approved clubs
+
+on:
+  schedule:
+    # 06:17 UTC on the 1st of every month
+    - cron: "17 6 1 * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: approved-clubs
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Scrape EPA affiliated clubs
+        id: scrape
+        run: |
+          node scripts/fetch-approved-clubs.js | tee scrape.log
+          {
+            echo "summary<<EOF"
+            grep -E "^(New|Removed) since last run" scrape.log || true
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Commit changes if any
+        env:
+          SUMMARY: ${{ steps.scrape.outputs.summary }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A assets/js/clubs-data.js assets/img/clubs
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Update approved clubs" -m "$SUMMARY"
+            git push
+          fi

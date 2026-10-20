@@ -129,3 +129,30 @@ change.
 Each page is plain HTML — edit the file directly, then run `node build.js`.
 Navigation, the ALPHA banner and the footer are edited once in
 `assets/partials/` and apply everywhere on the next build.
+
+## Approved clubs
+
+`approved-clubs.html` (linked from the footer) lists every club affiliated to
+the English Powerlifting Association, with its logo. Only these clubs and logos
+are allowed at divisional and national competitions.
+
+The data comes from the EPA's
+[affiliated clubs page](https://www.englishpowerlifting.co.uk/affiliated-clubs).
+That site is built on Wix, which embeds the whole club list as JSON in the page,
+so `scripts/fetch-approved-clubs.js` reads it with no browser and no
+dependencies. It writes:
+
+- `assets/js/clubs-data.js`: names, descriptions, websites and dates
+- `assets/img/clubs/`: a local, resized copy of each logo
+
+Contact names, emails, phones and postal addresses are deliberately not copied;
+they stay on the EPA site.
+
+`.github/workflows/approved-clubs.yml` runs the script on the 1st of each month
+(or on demand from the Actions tab) and commits any changes. The commit message
+lists clubs added or removed. On the page, clubs added in the last 90 days get a
+**New** tag, and removed clubs appear under "Recently removed" for 180 days.
+
+If a run finds far fewer clubs than before (over 25% fewer), it stops without
+writing anything, as that usually means the EPA page has changed shape. Check the
+page, then run `node scripts/fetch-approved-clubs.js --force` if the drop is real.

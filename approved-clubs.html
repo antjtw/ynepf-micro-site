@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Approved clubs — YNEPF</title>
+  <meta name="description" content="Every club affiliated to the English Powerlifting Association. Only these clubs and their logos may be shown at divisional and national competitions.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="assets/css/fonts.css">
+  <link rel="stylesheet" href="assets/css/tokens.css">
+  <link rel="stylesheet" href="assets/css/base.css">
+  <link rel="stylesheet" href="assets/css/components.css">
+</head>
+<body data-page="approved-clubs">
+  <a class="skip-link" href="#main">Skip to main content</a>
+
+  <!-- @partial:header start -->
+<div class="service-banner">
+  <div class="container">
+    <span class="tag-alpha">Alpha</span>
+    <p>This is a new service. For urgent matters, please visit <a href="https://www.ynepf.co.uk">ynepf.co.uk</a>.</p>
+  </div>
+</div>
+<header class="site-header">
+  <div class="container">
+    <a class="brand" href="index.html" data-nav="home">
+      <img class="brand-mark-img" src="assets/img/logo-white.svg" alt="" width="48" height="48" aria-hidden="true">
+      <span class="brand-name">
+        <span>Yorkshire &amp; North East</span>
+        <span>Powerlifting Federation</span>
+      </span>
+    </a>
+    <button class="nav-toggle" aria-expanded="false" aria-controls="primary-nav">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      Menu
+    </button>
+    <nav class="site-nav" id="primary-nav" aria-label="Primary">
+      <ul>
+        <li><a href="committee.html" data-nav="committee">Committee</a></li>
+        <li><a href="calendar.html" data-nav="calendar">Calendar</a></li>
+        <li><a href="faqs.html" data-nav="faqs">FAQs</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<!-- @partial:header end -->
+
+  <main id="main">
+    <div class="container">
+      <h1>Approved clubs</h1>
+      <p class="lede">Every club affiliated to the English Powerlifting Association, with its logo. Search by name or town to check a club quickly.</p>
+
+      <div class="notice">
+        <p><strong>Only these clubs and logos are allowed at divisional and national competitions.</strong> If a club or logo is not on this list, it cannot be worn or shown on the platform. Clubs not listed here can <a href="https://www.englishpowerlifting.co.uk/affiliated-clubs">affiliate with the English Powerlifting Association</a>.</p>
+      </div>
+
+      <p class="clubs-source" id="clubs-source">This list is copied from the <a href="https://www.englishpowerlifting.co.uk/affiliated-clubs">EPA affiliated clubs page</a> and checked for changes every month.</p>
+
+      <noscript>
+        <p class="notice">This list needs JavaScript. You can see the same clubs on the <a href="https://www.englishpowerlifting.co.uk/affiliated-clubs">EPA affiliated clubs page</a>.</p>
+      </noscript>
+
+      <div class="clubs-search">
+        <label for="club-search">Search clubs</label>
+        <input type="search" id="club-search" autocomplete="off" spellcheck="false" aria-describedby="club-count">
+      </div>
+      <p class="clubs-count" id="club-count" aria-live="polite"></p>
+
+      <ul class="club-list" id="club-list" role="list"></ul>
+      <p class="clubs-empty" id="clubs-empty" hidden>No clubs match your search. Check the spelling, or try part of the name.</p>
+
+      <section id="removed-clubs" hidden>
+        <h2>Recently removed</h2>
+        <p>These clubs have dropped off the EPA list. Their logos are no longer allowed.</p>
+        <ul id="removed-list"></ul>
+      </section>
+    </div>
+  </main>
+
+  <!-- @partial:footer start -->
+<footer class="site-footer">
+  <div class="container">
+    <ul class="footer-links">
+      <li><a href="approved-clubs.html">Approved clubs</a></li>
+    </ul>
+    <p style="margin:0;">&copy; Yorkshire &amp; North East Powerlifting Federation 2026</p>
+  </div>
+</footer>
+<!-- @partial:footer end -->
+  <script src="assets/js/nav.js" defer></script>
+  <script src="assets/js/clubs-data.js"></script>
+  <script src="assets/js/clubs.js" defer></script>
+</body>
+</html>

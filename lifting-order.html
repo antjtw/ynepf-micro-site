@@ -144,8 +144,12 @@
     }
     table.roster tbody tr:last-child td { border-bottom: none; }
     table.roster td.role-cell { font-weight: 600; width: 40%; }
+    .roster-name { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
     .name-filled { color: var(--text); }
     .name-needed { color: var(--text-muted); font-style: italic; }
+    .roster-name .ig-link { display: inline-flex; flex: none; color: var(--text-muted); }
+    .roster-name .ig-link:hover, .roster-name .ig-link:focus-visible { color: var(--accent); }
+    .roster-name .ig-link svg { width: 16px; height: 16px; display: block; }
 
     h1 {
       font-family: var(--font-display);
@@ -452,6 +456,13 @@
         });
       }
 
+      var IG_ICON =
+        '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+        '<rect x="2.5" y="2.5" width="19" height="19" rx="5" stroke="currentColor" stroke-width="1.8"/>' +
+        '<circle cx="12" cy="12" r="4.3" stroke="currentColor" stroke-width="1.8"/>' +
+        '<circle cx="17.4" cy="6.6" r="1.1" fill="currentColor"/>' +
+        '</svg>';
+
       // Wires a role="tablist" group to show/hide its aria-controls panels on
       // click or arrow-key navigation, per the WAI-ARIA Tabs pattern.
       function wireTabs(tablistEl) {
@@ -533,11 +544,16 @@
           panelsHtml += '<thead><tr><th scope="col">Role</th><th scope="col">Volunteer</th></tr></thead><tbody>';
           (rota.roles || []).forEach(function (r) {
             var needed = isNeeded(r.name);
+            var igHtml = r.instagram
+              ? '<a class="ig-link" href="' + esc(r.instagram) + '" target="_blank" rel="noopener" aria-label="' + esc(r.name) + ' on Instagram">' + IG_ICON + '</a>'
+              : "";
             panelsHtml += "<tr>";
             panelsHtml += '<td class="role-cell">' + esc(r.role) + "</td>";
+            panelsHtml += '<td><span class="roster-name">';
             panelsHtml += needed
-              ? '<td><span class="name-needed">' + esc(NEEDED_TEXT) + "</span></td>"
-              : '<td><span class="name-filled">' + esc(r.name) + "</span></td>";
+              ? '<span class="name-needed">' + esc(NEEDED_TEXT) + "</span>"
+              : '<span class="name-filled">' + esc(r.name) + "</span>";
+            panelsHtml += igHtml + "</span></td>";
             panelsHtml += "</tr>";
           });
           panelsHtml += "</tbody></table>";

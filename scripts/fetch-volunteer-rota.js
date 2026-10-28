@@ -12,6 +12,9 @@
    into one "rota" per column so the page can show Session 1, Session 2,
    Prime Time, Set up and Tear down as separate single-column tabs.
 
+   Instagram URLs aren't in a fixed column either — any cell near a name
+   that contains "instagram.com" is picked up as that person's profile link.
+
    Run by .github/workflows/lifting-order.yml on a schedule. Safe to run
    locally too: `node scripts/fetch-volunteer-rota.js`.
    ========================================================================== */
@@ -111,6 +114,32 @@ function isNote(roleText) {
   return NOTE_PATTERNS.some((re) => re.test(roleText));
 }
 
+const IG_URL_PATTERN = /instagram\.com/i;
+
+function normalizeUrl(u) {
+  if (!u) return "";
+  return /^https?:\/\//i.test(u) ? u : "https://" + u;
+}
+
+// Finds the nearest Instagram URL to a name column within [minIndex, maxIndex],
+// since the sheet isn't a clean fixed-column table — the URL just needs to sit
+// somewhere near the name it belongs to, not in one exact column.
+function findInstagramUrl(row, nameIndex, minIndex, maxIndex) {
+  var best = "";
+  var bestDist = Infinity;
+  for (var i = minIndex; i <= maxIndex && i < row.length; i++) {
+    var v = cell(row, i);
+    if (v && IG_URL_PATTERN.test(v)) {
+      var dist = Math.abs(i - nameIndex);
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = v;
+      }
+    }
+  }
+  return normalizeUrl(best);
+}
+
 // Parses the raw grid into blocks, each with 1-2 named columns and role rows.
 function parseBlocks(rows) {
   const blocks = [];
@@ -140,7 +169,9 @@ function parseBlocks(rows) {
 
     if (!role || isNote(role)) return;
 
-    current.rows.push({ role: role, values: [left, right] });
+    var igLeft = findInstagramUrl(row, 3, 0, 4);
+    var igRight = findInstagramUrl(row, 6, 5, row.length - 1);
+    current.rows.push({ role: role, values: [left, right], instagrams: [igLeft, igRight] });
   });
 
   return blocks;
@@ -156,7 +187,11 @@ function flattenRotas(blocks) {
         time: col.time,
         roles: block.rows.map((r) => {
           var name = r.values[colIndex] || "";
-          return { role: r.role, name: NAME_CORRECTIONS[name] || name };
+          return {
+            role: r.role,
+            name: NAME_CORRECTIONS[name] || name,
+            instagram: (r.instagrams && r.instagrams[colIndex]) || "",
+          };
         }),
       });
     });

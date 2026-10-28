@@ -35,12 +35,6 @@ const NOTE_PATTERNS = [
   /marked with a tick/i,
 ];
 
-// Stopgap fixes for names that are unclear in the sheet itself (e.g. "Dempsey??").
-// Remove an entry once the source sheet is corrected.
-const NAME_CORRECTIONS = {
-  "Dempsey??": "Matt Dempsey",
-};
-
 function fetchCsv(url, redirects = 5) {
   return new Promise((resolve, reject) => {
     https
@@ -189,7 +183,7 @@ function flattenRotas(blocks) {
           var name = r.values[colIndex] || "";
           return {
             role: r.role,
-            name: NAME_CORRECTIONS[name] || name,
+            name: name,
             instagram: (r.instagrams && r.instagrams[colIndex]) || "",
           };
         }),

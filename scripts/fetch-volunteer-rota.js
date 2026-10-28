@@ -14,6 +14,17 @@
 
    Instagram URLs aren't in a fixed column either — any cell near a name
    that contains "instagram.com" is picked up as that person's profile link.
+   In practice the sheet currently attaches these as a hyperlink on the name
+   cell itself (Google Sheets "Insert link"), which a CSV export cannot carry
+   at all — CSV has no concept of cell hyperlink metadata, only visible text.
+   So until the sheet instead has the plain URL as visible text somewhere
+   near the name, findInstagramUrl() above will find nothing live.
+
+   INSTAGRAM_OVERRIDES below is the stopgap: a name -> URL map hand-extracted
+   from an xlsx export on 2026-10-28 (xlsx keeps hyperlink metadata CSV
+   doesn't), applied to every occurrence of that person regardless of role.
+   Update an entry here when someone's handle changes; remove the whole map
+   once the sheet carries visible IG URLs and the live scan covers everyone.
 
    Run by .github/workflows/lifting-order.yml on a schedule. Safe to run
    locally too: `node scripts/fetch-volunteer-rota.js`.
@@ -104,6 +115,44 @@ function cell(row, i) {
   return (row[i] || "").trim();
 }
 
+function normalizeName(name) {
+  return name.trim().toLowerCase().replace(/\s*\([^)]*\)\s*$/, "").trim();
+}
+
+const INSTAGRAM_OVERRIDES = {
+  "caitlin baxter": "https://www.instagram.com/twoplatecait/",
+  "claire sear": "https://www.instagram.com/strengthcoachclaire/",
+  "luke thompson": "https://www.instagram.com/liftlaughlovex/",
+  "rhea sutcliffe": "https://www.instagram.com/rhea_powerlifts/",
+  "lorna pettifer": "https://www.instagram.com/lornapett/",
+  "leonardo vilares": "https://www.instagram.com/maxeffortliftz_/",
+  "andrew kearsey": "https://www.instagram.com/mrkearsey/",
+  "callum mchenery": "https://www.instagram.com/callummchenery/",
+  "saif hussain": "https://www.instagram.com/saifliftz/",
+  "carole o'neil": "https://www.instagram.com/caroleoneil/",
+  "darren scarfe": "https://www.instagram.com/darrenscarfe/",
+  "estelle varley": "https://www.instagram.com/seshstelle/",
+  "ben gibson": "https://www.instagram.com/bigbengibson/",
+  "matt dempsey": "https://www.instagram.com/dempseyleeds/",
+  "luke smith": "https://www.instagram.com/_smithsbd/",
+  "matthew brown": "https://www.instagram.com/matthew.br0wn_/",
+  "nathan vaughan britton": "https://www.instagram.com/nathan.v.britton/",
+  "jack beazley": "https://www.instagram.com/beazley_1/",
+  "ant white": "https://www.instagram.com/shred.kemper/",
+  "alex macaulay": "https://www.instagram.com/itsalexmac_/",
+  "sarah knight": "https://www.instagram.com/knightlifter/",
+  "gigi nicolson": "https://www.instagram.com/xgigi_n/",
+  "phil frost": "https://www.instagram.com/fr03tay/",
+  "jo frost": "https://www.instagram.com/jttfrost71/",
+  "karen horwood": "https://www.instagram.com/karen1423178/",
+  "joe whiteley": "https://www.instagram.com/joeytwobastards/",
+  "ella mansfield": "https://www.instagram.com/ell_liftss/",
+  "alys church": "https://www.instagram.com/alys_chunch/",
+  "maddie connolly": "https://www.instagram.com/maddieconnolly1974/",
+  "pete billington": "https://www.instagram.com/pt_peteliftsheavystuff/",
+  "jazz harrison": "https://www.instagram.com/jacked.jazz.jumps/",
+};
+
 function isNote(roleText) {
   return NOTE_PATTERNS.some((re) => re.test(roleText));
 }
@@ -181,10 +230,11 @@ function flattenRotas(blocks) {
         time: col.time,
         roles: block.rows.map((r) => {
           var name = r.values[colIndex] || "";
+          var live = (r.instagrams && r.instagrams[colIndex]) || "";
           return {
             role: r.role,
             name: name,
-            instagram: (r.instagrams && r.instagrams[colIndex]) || "",
+            instagram: live || INSTAGRAM_OVERRIDES[normalizeName(name)] || "",
           };
         }),
       });

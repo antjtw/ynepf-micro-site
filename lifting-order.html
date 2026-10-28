@@ -119,34 +119,45 @@
     .rota-time { color: var(--text-muted); font-size: 0.9rem; }
     .rota-time strong { color: var(--text); font-weight: 600; }
 
-    table.roster {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.95rem;
-    }
-    table.roster caption { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-    table.roster th, table.roster td {
-      padding: 0.6rem 0.75rem;
-      text-align: left;
-      border-bottom: 1px solid var(--line);
-      vertical-align: middle;
-    }
-    table.roster th:first-child, table.roster td:first-child { padding-right: 0.25rem; }
-    table.roster th:last-child, table.roster td:last-child { padding-left: 0.25rem; }
-    table.roster thead th {
+    .roster-columns {
+      display: flex;
+      padding: 0 0.75rem;
+      margin-bottom: 0.75rem;
       font-size: 0.75rem;
       letter-spacing: 0.08em;
       text-transform: uppercase;
       color: var(--text-muted);
       font-weight: 600;
     }
+    .roster-columns span:first-child { width: 240px; padding-right: 0.25rem; }
+    .roster-columns span:last-child { padding-left: 0.25rem; }
+
+    table.roster {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.95rem;
+      background: var(--bg-raised);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 1rem;
+    }
+    table.roster:last-child { margin-bottom: 0; }
+    table.roster caption { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+    table.roster th, table.roster td {
+      padding: 0.6rem 0.75rem;
+      text-align: left;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+    table.roster th:first-child, table.roster td:first-child { padding-right: 0.25rem; }
+    table.roster th:last-child, table.roster td:last-child { padding-left: 0.25rem; }
     table.roster tbody tr:last-child td { border-bottom: none; }
-    table.roster td.role-cell { font-weight: 400; color: var(--text-muted); width: 40%; }
-    table.roster tr.roster-gap td { height: 16px; padding: 0; border: none; }
-    .roster-name { display: inline-flex; align-items: center; gap: 0.5rem; }
+    table.roster td.role-cell { font-weight: 400; color: var(--text-muted); width: 240px; max-width: 240px; }
+    .roster-name { display: inline-flex; align-items: flex-start; gap: 0.5rem; }
     .name-filled { color: var(--text); font-weight: 600; }
     .name-needed { color: var(--text-muted); font-style: italic; font-weight: 600; }
-    .roster-name .ig-link { display: inline-flex; flex: none; color: var(--text-muted); }
+    .roster-name .ig-link { display: inline-flex; flex: none; color: var(--text-muted); margin-top: 0.2em; }
     .roster-name .ig-link:hover, .roster-name .ig-link:focus-visible { color: var(--accent); }
     .roster-name .ig-link svg { width: 16px; height: 16px; display: block; }
 
@@ -274,6 +285,8 @@
       table.lifters { font-size: 0.85rem; }
       table.lifters th, table.lifters td { padding: 0.5rem 0.75rem; }
       .flight-label { padding-left: 0.75rem; padding-right: 0.75rem; }
+      .roster-columns span:first-child { width: 50%; }
+      table.roster td.role-cell { width: 50%; max-width: none; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -507,13 +520,14 @@
         return !name || name.trim() === "" || name.trim().toLowerCase() === NEEDED_TEXT.toLowerCase();
       }
 
-      // Roles are clustered into these groups (in order), each separated by a
-      // small gap, so related roles read as one unit. "Ad-hoc" rows are folded
-      // into the Warm up/runner group and relabelled to match. Anything that
-      // doesn't match a group (e.g. Co-ordinator/Crew on Set up/Tear down)
-      // falls into a trailing, unlabelled group with its original role text.
+      // Roles are clustered into these groups (in order), each rendered as its
+      // own card. "Ad-hoc" rows are folded into the Warm up/runner group and
+      // relabelled to match. Anything that doesn't match a group (e.g.
+      // Co-ordinator/Crew on Set up/Tear down) falls into a trailing,
+      // unlabelled group with its original role text.
       var ROLE_GROUPS = [
-        { test: /^(chief referee|side referee|technical controller|jury)$/i },
+        { test: /^(chief referee|side referee|technical controller)$/i },
+        { test: /^jury$/i },
         { test: /^(session manager|table|mc)$/i },
         { test: /^(platform manager|platform crew)$/i },
         { test: /^(warm up\/runner|ad-hoc)$/i, relabel: "Warm up/runner" },
@@ -567,12 +581,13 @@
             groups[classified.group].push({ label: classified.label, name: r.name, instagram: r.instagram });
           });
 
-          panelsHtml += '<table class="roster"><caption>' + esc(tabLabel) + ' volunteer roster</caption>';
-          panelsHtml += '<thead><tr><th scope="col">Role</th><th scope="col">Volunteer</th></tr></thead><tbody>';
-          var renderedAGroup = false;
-          groups.forEach(function (rows) {
-            if (!rows || !rows.length) return;
-            if (renderedAGroup) panelsHtml += '<tr class="roster-gap"><td colspan="2"></td></tr>';
+          var nonEmptyGroups = groups.filter(function (rows) { return rows && rows.length; });
+          if (nonEmptyGroups.length) {
+            panelsHtml += '<div class="roster-columns"><span>Role</span><span>Volunteer</span></div>';
+          }
+          nonEmptyGroups.forEach(function (rows) {
+            panelsHtml += '<table class="roster"><caption>' + esc(tabLabel) + ' volunteer roster: ' + esc(rows[0].label) + '</caption>';
+            panelsHtml += '<thead class="visually-hidden"><tr><th scope="col">Role</th><th scope="col">Volunteer</th></tr></thead><tbody>';
             rows.forEach(function (r) {
               var needed = isNeeded(r.name);
               var igHtml = r.instagram
@@ -587,9 +602,8 @@
               panelsHtml += igHtml + "</span></td>";
               panelsHtml += "</tr>";
             });
-            renderedAGroup = true;
+            panelsHtml += "</tbody></table>";
           });
-          panelsHtml += "</tbody></table>";
           panelsHtml += "</div>";
         });
 

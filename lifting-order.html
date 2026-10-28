@@ -123,18 +123,16 @@
       width: 100%;
       border-collapse: collapse;
       font-size: 0.95rem;
-      background: var(--bg-raised);
-      border: 1px solid var(--line);
-      border-radius: 6px;
-      overflow: hidden;
     }
     table.roster caption { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
     table.roster th, table.roster td {
-      padding: 0.75rem 1.25rem;
+      padding: 0.6rem 0.75rem;
       text-align: left;
       border-bottom: 1px solid var(--line);
       vertical-align: middle;
     }
+    table.roster th:first-child, table.roster td:first-child { padding-right: 0.25rem; }
+    table.roster th:last-child, table.roster td:last-child { padding-left: 0.25rem; }
     table.roster thead th {
       font-size: 0.75rem;
       letter-spacing: 0.08em;
@@ -143,10 +141,11 @@
       font-weight: 600;
     }
     table.roster tbody tr:last-child td { border-bottom: none; }
-    table.roster td.role-cell { font-weight: 600; width: 40%; }
-    .roster-name { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
-    .name-filled { color: var(--text); }
-    .name-needed { color: var(--text-muted); font-style: italic; }
+    table.roster td.role-cell { font-weight: 400; color: var(--text-muted); width: 40%; }
+    table.roster tr.roster-gap td { height: 16px; padding: 0; border: none; }
+    .roster-name { display: inline-flex; align-items: center; gap: 0.5rem; }
+    .name-filled { color: var(--text); font-weight: 600; }
+    .name-needed { color: var(--text-muted); font-style: italic; font-weight: 600; }
     .roster-name .ig-link { display: inline-flex; flex: none; color: var(--text-muted); }
     .roster-name .ig-link:hover, .roster-name .ig-link:focus-visible { color: var(--accent); }
     .roster-name .ig-link svg { width: 16px; height: 16px; display: block; }
@@ -508,6 +507,27 @@
         return !name || name.trim() === "" || name.trim().toLowerCase() === NEEDED_TEXT.toLowerCase();
       }
 
+      // Roles are clustered into these groups (in order), each separated by a
+      // small gap, so related roles read as one unit. "Ad-hoc" rows are folded
+      // into the Warm up/runner group and relabelled to match. Anything that
+      // doesn't match a group (e.g. Co-ordinator/Crew on Set up/Tear down)
+      // falls into a trailing, unlabelled group with its original role text.
+      var ROLE_GROUPS = [
+        { test: /^(chief referee|side referee|technical controller|jury)$/i },
+        { test: /^(session manager|table|mc)$/i },
+        { test: /^(platform manager|platform crew)$/i },
+        { test: /^(warm up\/runner|ad-hoc)$/i, relabel: "Warm up/runner" },
+      ];
+
+      function classifyRole(role) {
+        for (var i = 0; i < ROLE_GROUPS.length; i++) {
+          if (ROLE_GROUPS[i].test.test(role)) {
+            return { group: i, label: ROLE_GROUPS[i].relabel || role };
+          }
+        }
+        return { group: ROLE_GROUPS.length, label: role };
+      }
+
       function renderVolunteerRota(data) {
         var statusEl = document.getElementById("rota-status");
         var tablistEl = document.getElementById("rota-tablist");
@@ -540,21 +560,34 @@
           if (rota.time) panelsHtml += '<p class="rota-time">' + esc(rota.time) + "</p>";
           panelsHtml += "</div>";
 
+          var groups = [];
+          (rota.roles || []).forEach(function (r) {
+            var classified = classifyRole(r.role);
+            groups[classified.group] = groups[classified.group] || [];
+            groups[classified.group].push({ label: classified.label, name: r.name, instagram: r.instagram });
+          });
+
           panelsHtml += '<table class="roster"><caption>' + esc(tabLabel) + ' volunteer roster</caption>';
           panelsHtml += '<thead><tr><th scope="col">Role</th><th scope="col">Volunteer</th></tr></thead><tbody>';
-          (rota.roles || []).forEach(function (r) {
-            var needed = isNeeded(r.name);
-            var igHtml = r.instagram
-              ? '<a class="ig-link" href="' + esc(r.instagram) + '" target="_blank" rel="noopener" aria-label="' + esc(r.name) + ' on Instagram">' + IG_ICON + '</a>'
-              : "";
-            panelsHtml += "<tr>";
-            panelsHtml += '<td class="role-cell">' + esc(r.role) + "</td>";
-            panelsHtml += '<td><span class="roster-name">';
-            panelsHtml += needed
-              ? '<span class="name-needed">' + esc(NEEDED_TEXT) + "</span>"
-              : '<span class="name-filled">' + esc(r.name) + "</span>";
-            panelsHtml += igHtml + "</span></td>";
-            panelsHtml += "</tr>";
+          var renderedAGroup = false;
+          groups.forEach(function (rows) {
+            if (!rows || !rows.length) return;
+            if (renderedAGroup) panelsHtml += '<tr class="roster-gap"><td colspan="2"></td></tr>';
+            rows.forEach(function (r) {
+              var needed = isNeeded(r.name);
+              var igHtml = r.instagram
+                ? '<a class="ig-link" href="' + esc(r.instagram) + '" target="_blank" rel="noopener" aria-label="' + esc(r.name) + ' on Instagram">' + IG_ICON + '</a>'
+                : "";
+              panelsHtml += "<tr>";
+              panelsHtml += '<td class="role-cell">' + esc(r.label) + "</td>";
+              panelsHtml += '<td><span class="roster-name">';
+              panelsHtml += needed
+                ? '<span class="name-needed">' + esc(NEEDED_TEXT) + "</span>"
+                : '<span class="name-filled">' + esc(r.name) + "</span>";
+              panelsHtml += igHtml + "</span></td>";
+              panelsHtml += "</tr>";
+            });
+            renderedAGroup = true;
           });
           panelsHtml += "</tbody></table>";
           panelsHtml += "</div>";

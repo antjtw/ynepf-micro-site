@@ -1,4 +1,4 @@
-name: Update lifting order
+name: Update rota data
 
 on:
   schedule:
@@ -21,14 +21,17 @@ jobs:
       - name: Fetch lifting order data
         run: node scripts/fetch-lifting-order.js
 
+      - name: Fetch volunteer rota data
+        run: node scripts/fetch-volunteer-rota.js
+
       - name: Commit changes if any
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add assets/js/lifting-order-data.js
+          git add assets/js/lifting-order-data.js assets/js/volunteer-rota-data.js
           if git diff --cached --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "Update lifting order data"
+            git commit -m "Update rota data"
             git push
           fi

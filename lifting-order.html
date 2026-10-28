@@ -476,11 +476,13 @@
         '</svg>';
 
       // Wires a role="tablist" group to show/hide its aria-controls panels on
-      // click or arrow-key navigation, per the WAI-ARIA Tabs pattern.
-      function wireTabs(tablistEl) {
+      // click or arrow-key navigation, per the WAI-ARIA Tabs pattern. Returns
+      // the tab elements and a select() function so callers can drive it
+      // programmatically (e.g. from a URL hash).
+      function wireTabs(tablistEl, onSelect) {
         var tabs = Array.prototype.slice.call(tablistEl.querySelectorAll('[role="tab"]'));
 
-        function select(tab) {
+        function select(tab, focus) {
           tabs.forEach(function (t) {
             var selected = t === tab;
             t.setAttribute("aria-selected", selected ? "true" : "false");
@@ -488,7 +490,8 @@
             var panel = document.getElementById(t.getAttribute("aria-controls"));
             if (panel) panel.hidden = !selected;
           });
-          tab.focus();
+          if (focus !== false) tab.focus();
+          if (onSelect) onSelect(tab);
         }
 
         tabs.forEach(function (tab, i) {
@@ -507,11 +510,32 @@
             }
           });
         });
+
+        return { tabs: tabs, select: select };
       }
 
       // Top-level Lifting order / Volunteer rota tabs. Selecting a tab purely
       // toggles visibility; both panels render their content up front.
-      wireTabs(document.querySelector('.tablist[data-level="top"]'));
+      // The URL hash (#volunteer-rota / #lifting-order) deep-links to a tab,
+      // so the right one can be shared and bookmarked directly, and the hash
+      // updates as people switch tabs so a copied link always matches.
+      var HASH_TO_TAB_ID = { "volunteer-rota": "tab-volunteer", "lifting-order": "tab-lifting" };
+      var TAB_ID_TO_HASH = { "tab-volunteer": "volunteer-rota", "tab-lifting": "lifting-order" };
+
+      var topTabs = wireTabs(document.querySelector('.tablist[data-level="top"]'), function (tab) {
+        var hash = TAB_ID_TO_HASH[tab.id];
+        if (hash && window.history && history.replaceState) {
+          history.replaceState(null, "", "#" + hash);
+        }
+      });
+
+      function selectTopTabFromHash() {
+        var tabId = HASH_TO_TAB_ID[location.hash.replace(/^#/, "")];
+        var tab = tabId && topTabs.tabs.filter(function (t) { return t.id === tabId; })[0];
+        if (tab) topTabs.select(tab, false);
+      }
+      selectTopTabFromHash();
+      window.addEventListener("hashchange", selectTopTabFromHash);
 
       // --- Volunteer rota ---------------------------------------------------
       var NEEDED_TEXT = "Volunteer needed";

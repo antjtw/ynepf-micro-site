@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lifting order — YNE Worlds 26</title>
-  <meta name="description" content="Flight-by-flight lifting order for YNE Worlds 26, 7–8 November 2026, Riccall Regen Centre.">
+  <title>Lifting order &amp; volunteer rota — YNE Worlds 26</title>
+  <meta name="description" content="Flight-by-flight lifting order and volunteer rota for YNE Worlds 26, 7–8 November 2026, Riccall Regen Centre.">
   <meta name="robots" content="noindex">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -76,6 +76,76 @@
     }
 
     main { padding: 2rem 0 4rem; }
+
+    /* Tabs (top-level and sub-level share this look) */
+    .tablist {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.25rem;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 1.5rem;
+    }
+    .tablist[data-level="sub"] { margin-bottom: 1.75rem; }
+    .tab {
+      appearance: none;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--text-muted);
+      font: inherit;
+      font-weight: 600;
+      font-size: 0.95rem;
+      padding: 0.75rem 1rem;
+      cursor: pointer;
+      margin-bottom: -1px;
+    }
+    .tablist[data-level="sub"] .tab { font-size: 0.85rem; padding: 0.6rem 0.85rem; }
+    .tab:hover { color: var(--text); }
+    .tab[aria-selected="true"] {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+    .tabpanel[hidden] { display: none; }
+
+    .rota-head { margin-bottom: 1.5rem; }
+    .rota-title {
+      font-family: var(--font-display);
+      font-variation-settings: "wght" 700, "wdth" 95;
+      font-size: 1.35rem;
+      letter-spacing: 0.02em;
+      margin: 0 0 0.25rem;
+    }
+    .rota-day { color: var(--text-muted); margin: 0 0 0.5rem; }
+    .rota-time { color: var(--text-muted); font-size: 0.9rem; }
+    .rota-time strong { color: var(--text); font-weight: 600; }
+
+    table.roster {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.95rem;
+      background: var(--bg-raised);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    table.roster caption { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+    table.roster th, table.roster td {
+      padding: 0.75rem 1.25rem;
+      text-align: left;
+      border-bottom: 1px solid var(--line);
+      vertical-align: middle;
+    }
+    table.roster thead th {
+      font-size: 0.75rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+    table.roster tbody tr:last-child td { border-bottom: none; }
+    table.roster td.role-cell { font-weight: 600; width: 40%; }
+    .name-filled { color: var(--text); }
+    .name-needed { color: var(--text-muted); font-style: italic; }
 
     h1 {
       font-family: var(--font-display);
@@ -217,14 +287,28 @@
 
   <main id="main">
     <div class="container">
-      <h1 class="visually-hidden">Lifting order</h1>
+      <h1 class="visually-hidden">Lifting order and volunteer rota</h1>
 
-      <div id="content"></div>
-      <p class="status" id="status">Loading lifting order…</p>
+      <div class="tablist" role="tablist" aria-label="Page section" data-level="top">
+        <button class="tab" id="tab-lifting" role="tab" aria-selected="true" aria-controls="panel-lifting" type="button">Lifting order</button>
+        <button class="tab" id="tab-volunteer" role="tab" aria-selected="false" aria-controls="panel-volunteer" tabindex="-1" type="button">Volunteer rota</button>
+      </div>
+
+      <div class="tabpanel" id="panel-lifting" role="tabpanel" aria-labelledby="tab-lifting">
+        <div id="content"></div>
+        <p class="status" id="status">Loading lifting order…</p>
+      </div>
+
+      <div class="tabpanel" id="panel-volunteer" role="tabpanel" aria-labelledby="tab-volunteer" hidden>
+        <div class="tablist" role="tablist" aria-label="Volunteer rota" data-level="sub" id="rota-tablist"></div>
+        <div id="rota-content"></div>
+        <p class="status" id="rota-status">Loading volunteer rota…</p>
+      </div>
     </div>
   </main>
 
   <script src="assets/js/lifting-order-data.js"></script>
+  <script src="assets/js/volunteer-rota-data.js"></script>
   <script>
     (function () {
       var DAY_META = {
@@ -356,6 +440,125 @@
         var contentEl = document.getElementById("content");
         statusEl.setAttribute("hidden", "");
         contentEl.innerHTML = '<p class="error">Lifting order data failed to load. Try refreshing the page.</p>';
+      }
+    })();
+  </script>
+
+  <script>
+    (function () {
+      function esc(s) {
+        return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+          return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+        });
+      }
+
+      // Wires a role="tablist" group to show/hide its aria-controls panels on
+      // click or arrow-key navigation, per the WAI-ARIA Tabs pattern.
+      function wireTabs(tablistEl) {
+        var tabs = Array.prototype.slice.call(tablistEl.querySelectorAll('[role="tab"]'));
+
+        function select(tab) {
+          tabs.forEach(function (t) {
+            var selected = t === tab;
+            t.setAttribute("aria-selected", selected ? "true" : "false");
+            t.tabIndex = selected ? 0 : -1;
+            var panel = document.getElementById(t.getAttribute("aria-controls"));
+            if (panel) panel.hidden = !selected;
+          });
+          tab.focus();
+        }
+
+        tabs.forEach(function (tab, i) {
+          tab.addEventListener("click", function () {
+            select(tab);
+          });
+          tab.addEventListener("keydown", function (e) {
+            var next = null;
+            if (e.key === "ArrowRight" || e.key === "ArrowDown") next = tabs[(i + 1) % tabs.length];
+            else if (e.key === "ArrowLeft" || e.key === "ArrowUp") next = tabs[(i - 1 + tabs.length) % tabs.length];
+            else if (e.key === "Home") next = tabs[0];
+            else if (e.key === "End") next = tabs[tabs.length - 1];
+            if (next) {
+              e.preventDefault();
+              select(next);
+            }
+          });
+        });
+      }
+
+      // Top-level Lifting order / Volunteer rota tabs. Selecting a tab purely
+      // toggles visibility; both panels render their content up front.
+      wireTabs(document.querySelector('.tablist[data-level="top"]'));
+
+      // --- Volunteer rota ---------------------------------------------------
+      var NEEDED_TEXT = "Volunteer needed";
+
+      function isNeeded(name) {
+        return !name || name.trim() === "" || name.trim().toLowerCase() === NEEDED_TEXT.toLowerCase();
+      }
+
+      function renderVolunteerRota(data) {
+        var statusEl = document.getElementById("rota-status");
+        var tablistEl = document.getElementById("rota-tablist");
+        var contentEl = document.getElementById("rota-content");
+
+        if (!data || !data.rotas || !data.rotas.length) {
+          statusEl.textContent = "No volunteer rota data is available right now.";
+          return;
+        }
+
+        var tabsHtml = "";
+        var panelsHtml = "";
+
+        data.rotas.forEach(function (rota, i) {
+          var parts = (rota.title || "").split(";");
+          var tabLabel = (parts[0] || rota.title || "Rota " + (i + 1)).trim();
+          var dayLabel = (parts[1] || "").trim();
+          var tabId = "rota-tab-" + i;
+          var panelId = "rota-panel-" + i;
+
+          tabsHtml +=
+            '<button class="tab" id="' + tabId + '" role="tab" aria-selected="' + (i === 0 ? "true" : "false") +
+            '" aria-controls="' + panelId + '"' + (i === 0 ? "" : ' tabindex="-1"') + ' type="button">' +
+            esc(tabLabel) + "</button>";
+
+          panelsHtml += '<div class="tabpanel" id="' + panelId + '" role="tabpanel" aria-labelledby="' + tabId + '"' + (i === 0 ? "" : " hidden") + ">";
+          panelsHtml += '<div class="rota-head">';
+          panelsHtml += '<h2 class="rota-title">' + esc(tabLabel) + "</h2>";
+          if (dayLabel) panelsHtml += '<p class="rota-day">' + esc(dayLabel) + "</p>";
+          if (rota.time) panelsHtml += '<p class="rota-time">' + esc(rota.time) + "</p>";
+          panelsHtml += "</div>";
+
+          panelsHtml += '<table class="roster"><caption>' + esc(tabLabel) + ' volunteer roster</caption>';
+          panelsHtml += '<thead><tr><th scope="col">Role</th><th scope="col">Volunteer</th></tr></thead><tbody>';
+          (rota.roles || []).forEach(function (r) {
+            var needed = isNeeded(r.name);
+            panelsHtml += "<tr>";
+            panelsHtml += '<td class="role-cell">' + esc(r.role) + "</td>";
+            panelsHtml += needed
+              ? '<td><span class="name-needed">' + esc(NEEDED_TEXT) + "</span></td>"
+              : '<td><span class="name-filled">' + esc(r.name) + "</span></td>";
+            panelsHtml += "</tr>";
+          });
+          panelsHtml += "</tbody></table>";
+          panelsHtml += "</div>";
+        });
+
+        tablistEl.innerHTML = tabsHtml;
+        contentEl.innerHTML = panelsHtml;
+        wireTabs(tablistEl);
+
+        statusEl.textContent = data.generatedAt
+          ? "Last updated " + new Date(data.generatedAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" }) + "."
+          : "";
+      }
+
+      if (window.VOLUNTEER_ROTA_DATA && window.VOLUNTEER_ROTA_DATA.rotas) {
+        renderVolunteerRota(window.VOLUNTEER_ROTA_DATA);
+      } else {
+        var statusEl = document.getElementById("rota-status");
+        statusEl.setAttribute("hidden", "");
+        document.getElementById("rota-content").innerHTML = '<p class="error">Volunteer rota data failed to load. Try refreshing the page.</p>';
       }
     })();
   </script>

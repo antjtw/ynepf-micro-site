@@ -42,7 +42,7 @@ window.VOLUNTEER_ROTA_DATA = {
         {
           "role": "Table",
           "name": "Annie Mills",
-          "instagram": ""
+          "instagram": "https://www.instagram.com/aannielifts/"
         },
         {
           "role": "MC",
@@ -128,7 +128,7 @@ window.VOLUNTEER_ROTA_DATA = {
         {
           "role": "Table",
           "name": "Annie Mills",
-          "instagram": ""
+          "instagram": "https://www.instagram.com/aannielifts/"
         },
         {
           "role": "MC",

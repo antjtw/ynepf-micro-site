@@ -151,6 +151,7 @@ const INSTAGRAM_OVERRIDES = {
   "maddie connolly": "https://www.instagram.com/maddieconnolly1974/",
   "pete billington": "https://www.instagram.com/pt_peteliftsheavystuff/",
   "jazz harrison": "https://www.instagram.com/jacked.jazz.jumps/",
+  "annie mills": "https://www.instagram.com/aannielifts/",
 };
 
 function isNote(roleText) {

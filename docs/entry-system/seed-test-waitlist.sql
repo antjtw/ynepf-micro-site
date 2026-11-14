@@ -1,5 +1,6 @@
 -- Puts five pretend people on a competition's waiting list, so you can see the Waiting list tab with something in it.
--- Run it in the Supabase SQL editor. Change 'march' below to any part of the competition's name.
+-- Run it in the Supabase SQL editor. It uses the competition's web address ending (slug), so change '2026-test-spring-open'
+-- below to the one you want. The competition must take entries on this website (online entry); one entered elsewhere has no waiting list.
 --
 -- BEFORE YOU USE IT: only do this while the competition has no free places (set its number of spaces to the number of entries it
 -- has). If a place is free the timer will try to offer it to these people and email test-waiter-1@example.com, which goes nowhere.
@@ -7,7 +8,7 @@
 insert into public.waiting_list (competition_id, email, full_name, joined_at)
 select c.id, 'test-waiter-' || n || '@example.com', 'Test Waiter ' || n, now() - make_interval(mins => 60 - n)
   from public.competitions c cross join generate_series(1, 5) n
- where c.name ilike '%march%' and c.entry_method = 'yne'
+ where c.slug = '2026-test-spring-open' and c.entry_method = 'yne'
 on conflict (competition_id, email) do nothing;
 
 -- To take them off again:

@@ -505,7 +505,7 @@ input.control, select.control {
 .field-check input[type="radio"] { border-radius: 50%; }
 .field-check input[type="checkbox"] { border-radius: 4px; }
 .field-check input[type="radio"]::before { content: ""; position: absolute; inset: 0.5rem; border-radius: 50%; background: var(--accent-ink); opacity: 0; }
-.field-check input[type="checkbox"]::after::after { content: ""; position: absolute; left: calc(var(--box) * 0.216); top: calc(var(--box) * 0.308); width: calc(var(--box) * 0.44); height: calc(var(--box) * 0.22); border: solid var(--accent-ink); border-width: 0 0 calc(var(--box) * 0.1) calc(var(--box) * 0.1); transform: rotate(-45deg); opacity: 0; }
+.field-check input[type="checkbox"]::after { content: ""; position: absolute; left: calc(var(--box) * 0.216); top: calc(var(--box) * 0.308); width: calc(var(--box) * 0.44); height: calc(var(--box) * 0.22); border: solid var(--accent-ink); border-width: 0 0 calc(var(--box) * 0.1) calc(var(--box) * 0.1); transform: rotate(-45deg); opacity: 0; }
 .field-check input:checked::before, .field-check input:checked::after { opacity: 1; }
 .field-check input:hover { border-color: var(--accent-ink); }
 .field-check input:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; box-shadow: 0 0 0 3px var(--focus-text); }

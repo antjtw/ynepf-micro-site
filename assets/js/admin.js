@@ -508,7 +508,7 @@
       var tabs = el("nav", { class: "admin-tabs subtabs", "aria-label": c.name }, el("a", { href: "#competitions/" + c.id, "aria-current": tab === "details" ? "page" : null }, "Details"));
       if (canEntry()) tabs.appendChild(el("a", { href: "#competitions/" + c.id + "/entries", "aria-current": tab === "entries" ? "page" : null }, "Entries"));
       if (canEntry() && c.entry_method === "yne") tabs.appendChild(el("a", { href: "#competitions/" + c.id + "/waiting", "aria-current": tab === "waiting" ? "page" : null }, "Waiting list"));
-      if (canEntry()) tabs.appendChild(el("a", { href: "#competitions/" + c.id + "/discounts", "aria-current": tab === "discounts" ? "page" : null }, "Discounts"));
+      if (canEntry()) tabs.appendChild(el("a", { href: "#competitions/" + c.id + "/discounts", "aria-current": tab === "discounts" ? "page" : null }, "Codes and links"));
       if (canEntry()) tabs.appendChild(el("a", { href: "#competitions/" + c.id + "/extras", "aria-current": tab === "extras" ? "page" : null }, "Extras"));
       if (canEntry()) tabs.appendChild(el("a", { href: "#competitions/" + c.id + "/money", "aria-current": tab === "money" ? "page" : null }, "Money"));
       if (canComp()) tabs.appendChild(el("a", { href: "#competitions/" + c.id + "/results", "aria-current": tab === "results" ? "page" : null }, "Results"));
@@ -874,7 +874,6 @@
       view.replaceChildren(
         el("div", { class: "actions", style: "margin-bottom:var(--space-3)" },
           btn("Add entry", function () { addEntry(c, refs, reload); }, "btn-primary"),
-          c.entry_method === "yne" ? btn("Priority entry", function () { editPriority(c); }, "btn-secondary") : null,
           c.slug ? el("a", { class: "btn btn-sm btn-secondary", href: "../entries?c=" + encodeURIComponent(c.slug), target: "_blank", rel: "noopener" }, "Public list") : null,
           btn("Download CSV", function () { downloadEntries(c); }, "btn-ghost")),
         el("p", { class: "panel-intro" }, live.length + " entered of " + (c.capacity || "?") + " places. Entry money taken: " + entryMoney(total) + "." +
@@ -1193,6 +1192,7 @@
           return ["Live", "tag tag-open"];
         }
         view.replaceChildren(
+          el("h2", { style: "margin-top:0" }, "Discount codes"),
           el("div", { class: "actions", style: "margin-bottom:var(--space-3)" }, btn("Make a discount code", function () { makeDiscount(c, function () { renderDiscountsTab(view, c); }); }, "btn-primary")),
           el("p", { class: "panel-intro" }, "Give someone a code and they enter it on the last step of the entry form. A code can take pounds or a percentage off, and one that takes everything off makes the entry free. Tie a code to someone's email address and only they can use it."),
           codes.length ? el("div", { class: "table-scroll" }, el("table", { class: "admin-table" },
@@ -1209,7 +1209,8 @@
                   btn("Copy", function () { copyText(d.code); }),
                   btn(d.active ? "Switch off" : "Switch on", function () { sb.from("discount_codes").update({ active: !d.active }).eq("id", d.id).then(ok).then(function () { renderDiscountsTab(view, c); }).catch(function (er) { toast(friendly(er), "error"); }); }),
                   n === 0 ? btn("Delete", function () { if (!window.confirm("Delete the code " + d.code + "?")) return; sb.from("discount_codes").delete().eq("id", d.id).then(ok).then(function () { renderDiscountsTab(view, c); }).catch(function (er) { toast(friendly(er), "error"); }); }, "btn-danger") : null)));
-            })))) : el("p", { class: "empty" }, "No discount codes yet."));
+            })))) : el("p", { class: "empty" }, "No discount codes yet."),
+          c.entry_method === "yne" ? prioritySection(c) : null);
       });
     }).catch(function (e) { view.replaceChildren(el("p", { class: "form-error" }, friendly(e))); });
   }
@@ -1432,7 +1433,7 @@
 
   // Priority entry opens one day before general entry. Each email gets a personal, single-use link. Only a
   // fingerprint is stored, so the links are shown once, here.
-  function editPriority(c) {
+  function editPriority(c, done) {
     openForm({
       title: "Priority entry: " + c.name, saveLabel: "Make links",
       intro: "Priority entry opens one day before general entry" + (c.entry_opens ? " (" + whenText(Y.toLondonInput(new Date(new Date(c.entry_opens).getTime() - 86400000).toISOString())) + ")" : " (set the opening time first)") + ". Enter one email address per line. Each person gets a personal link that only works with their own email address. Making a new link for someone replaces their old unused one.",
@@ -1442,19 +1443,40 @@
         if (!list.length) return Promise.reject(new Error("Enter at least one email address."));
         return sb.rpc("create_priority_invites", { c: c.id, emails: list }).then(function (r) {
           if (r.error) { var m = (r.error.message || "").trim(); throw new Error(/^invalid:email/.test(m) ? "That does not look like an email address: " + m.replace(/^invalid:email:/, "") : friendly(r.error)); }
-          setTimeout(function () { showPriorityLinks(c, r.data); }, 80);
+          setTimeout(function () { showPriorityLinks(c, r.data, done); }, 80);
         });
       }
     });
   }
-  function showPriorityLinks(c, rows) {
+  function showPriorityLinks(c, rows, done) {
     var text = rows.map(function (r) { return r.email + "  " + location.origin + "/enter?c=" + c.slug + "&invite=" + r.token; }).join("\n");
     openForm({
       title: "Priority links", saveLabel: "Done", values: { links: text },
       intro: "Copy these now. They cannot be shown again. Send each person only their own link.",
       fields: [{ name: "links", label: "One link per person", type: "textarea", rows: Math.min(14, rows.length + 2) }],
-      onSave: function () { return Promise.resolve(); }
+      onSave: function () { if (done) done(); return Promise.resolve(); }
     });
+  }
+  // Who has a priority link, and whether they have used it. (A link can be shown only once, when it is made.)
+  function prioritySection(c) {
+    var box = el("div", { class: "danger-free", style: "margin-top:var(--space-6)" });
+    function load() {
+      box.replaceChildren(el("h2", null, "Priority entry links"), el("p", null, "Loading…"));
+      sb.from("invites").select("id,email,used_at,entry_id").eq("competition_id", c.id).order("email").then(ok).then(function (rows) {
+        var next = function () { load(); };
+        box.replaceChildren(el("h2", null, "Priority entry links"),
+          el("p", { class: "panel-intro" }, "A personal link lets someone enter one day before general entry opens. Make the links, then send each person their own."),
+          el("div", { class: "actions", style: "margin-bottom:var(--space-3)" }, btn("Make priority links", function () { editPriority(c, next); }, "btn-primary")),
+          rows.length ? el("div", { class: "table-scroll" }, el("table", { class: "admin-table" },
+            el("thead", null, el("tr", null, ["Email", "Status", "Actions"].map(function (h) { return el("th", { scope: "col" }, h); }))),
+            el("tbody", null, rows.map(function (r) {
+              return el("tr", null, el("th", { scope: "row" }, r.email), el("td", null, el("span", { class: r.used_at ? "tag tag-open" : "tag tag-position" }, r.used_at ? "Used: they have entered" : "Not used yet")),
+                el("td", null, r.used_at ? "" : el("span", { class: "actions" }, btn("Remove", function () { if (!window.confirm("Remove the link for " + r.email + "?")) return; sb.from("invites").delete().eq("id", r.id).then(ok).then(next).catch(function (e) { toast(friendly(e), "error"); }); }, "btn-danger"))));
+            })))) : el("p", { class: "empty" }, "No priority links made yet."));
+      }).catch(function (e) { box.replaceChildren(el("h2", null, "Priority entry links"), el("p", { class: "form-error" }, friendly(e))); });
+    }
+    load();
+    return box;
   }
 
   // ---- news -----------------------------------------------------------------------

@@ -133,6 +133,8 @@ Codes are made in the editor: open a competition, then the **Discounts** tab, th
 
 ## Part 5e: The money tab
 
+After a competition, open its **Results** tab and paste the link to its page on OpenIPF. A "View results" button then appears on the calendar. Clear the box to take it off.
+
 To delete a competition, open it and scroll to the bottom of its **Details** tab: the red **Delete this competition** button asks you to confirm. A competition that has entries cannot be deleted, because entries and payments are records we keep; the dialog says so and offers to hide it from the website instead.
 
 On the competition's **Details** tab, tick **This is a franchise competition** when a host runs it. Leave it unticked for a competition the federation runs itself: the federation then keeps the whole entry fee and there is no host to pay.

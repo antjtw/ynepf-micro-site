@@ -332,7 +332,7 @@
     sb.from("competitions").select("*").eq("id", args[0]).maybeSingle().then(function (res) {
       var c = ok(res);
       if (!c) return panel.replaceChildren(panelHead("Not found"), el("p", null, "That item no longer exists."), backLink());
-      renderEditor(panel, c, c.kind === "event" ? "event" : "competition", args[1] === "entries" ? "entries" : args[1] === "discounts" ? "discounts" : args[1] === "money" ? "money" : args[1] === "extras" ? "extras" : args[1] === "waiting" ? "waiting" : "details");
+      renderEditor(panel, c, c.kind === "event" ? "event" : "competition", args[1] === "entries" ? "entries" : args[1] === "discounts" ? "discounts" : args[1] === "money" ? "money" : args[1] === "extras" ? "extras" : args[1] === "waiting" ? "waiting" : args[1] === "results" ? "results" : "details");
     }).catch(function (e) { panel.replaceChildren(el("p", { class: "form-error" }, friendly(e)), backLink()); });
   }
 
@@ -511,6 +511,7 @@
       if (canEntry()) tabs.appendChild(el("a", { href: "#competitions/" + c.id + "/discounts", "aria-current": tab === "discounts" ? "page" : null }, "Discounts"));
       if (canEntry()) tabs.appendChild(el("a", { href: "#competitions/" + c.id + "/extras", "aria-current": tab === "extras" ? "page" : null }, "Extras"));
       if (canEntry()) tabs.appendChild(el("a", { href: "#competitions/" + c.id + "/money", "aria-current": tab === "money" ? "page" : null }, "Money"));
+      if (canComp()) tabs.appendChild(el("a", { href: "#competitions/" + c.id + "/results", "aria-current": tab === "results" ? "page" : null }, "Results"));
       panel.appendChild(tabs);
     }
     panel.appendChild(view);
@@ -519,6 +520,7 @@
     if (tab === "discounts" && !isNew && !isEvent) return renderDiscountsTab(view, c);
     if (tab === "extras" && !isNew && !isEvent) return renderExtrasTab(view, c);
     if (tab === "money" && !isNew && !isEvent) return renderMoneyTab(view, c);
+    if (tab === "results" && !isNew && !isEvent) return renderResultsTab(view, c);
     return isEvent ? renderEventForm(view, c, isNew) : renderCompetitionForm(view, c, isNew);
   }
 
@@ -588,10 +590,9 @@
         { heading: "Full, closed and waiting list" },
         C({ name: "entries_full", label: "Entries full", type: "checkbox", show: function (v) { return v.method !== "online"; }, help: "Tick when a competition that is entered somewhere else fills up. Online entry marks itself full when the places run out, and the waiting list opens by itself." }),
         E({ name: "entries_closed_manually", label: "Close entries now", type: "checkbox", show: isOnline, help: "Stops new online entries straight away. Untick to reopen." }),
-        { heading: "Lifting order and results" },
+        { heading: "Lifting order" },
         C({ name: "lifting_order_url", label: "Lifting order sheet (optional)", type: "url", placeholder: "https://docs.google.com/spreadsheets/d/e/…/pub?output=csv",
           help: "Add it a few days after entries open: a “View lifting order” button appears once it is here, and the page follows the sheet as you edit it. Use a published Google Sheet (File > Share > Publish to web > CSV), one row per lifter. Needs columns Day, Session, Flight and Name. Optional: Club, Instagram, Age class (blank = Open, otherwise J, SJ, M1, M2, M3 or M4), Class (for example M66), GLP, Total, Open IPF, and per session Weigh-in, Lift off and Session name. Only columns with something in them are shown." }),
-        C({ name: "openipf_url", label: "OpenIPF results link (optional)", type: "url", placeholder: "https://www.openipf.org/…", help: "Add this after the competition, once results are on OpenIPF." }),
         { heading: "On the website" },
         C({ name: "published", label: "Show on the website", type: "checkbox", help: "Untick to keep it as a draft. A draft can still be tried by signed-in entries staff." })
       ]);
@@ -655,7 +656,6 @@
           else if (v.method === "link" && !v.entry_url) problem = "Add the entry link, or choose another way of taking entries.";
           else if (v.entry_url && !/^https?:\/\//i.test(v.entry_url)) problem = "The entry link must start with https://";
           else if (v.map_url && !/^https?:\/\//i.test(v.map_url)) problem = "The map link must start with https://";
-          else if (v.openipf_url && !/^https:\/\//i.test(v.openipf_url)) problem = "The OpenIPF link must start with https://";
           else if (v.lifting_order_url && !Y.sheetCsvUrl(v.lifting_order_url)) problem = "The lifting order link does not look usable. It must start with https://";
           else if (!v.name) problem = "Name is required.";
           else if (!v.start_date) problem = "The first day is required.";
@@ -664,7 +664,7 @@
         bar.busy(true);
         var row = {
           name: v.name, slug: v.slug, description: v.description, label: v.label, start_date: v.start_date, end_date: v.end_date || null,
-          venue_name: v.venue_name, venue_address: v.venue_address, map_url: v.map_url, openipf_url: v.openipf_url,
+          venue_name: v.venue_name, venue_address: v.venue_address, map_url: v.map_url,
           capacity: v.capacity, entry_url: v.method === "link" ? v.entry_url : "",
           entry_opens: opens ? Y.fromLondonInput(opens) : null, entry_closes: closes ? Y.fromLondonInput(closes) : null,
           entries_full: v.entries_full, lifting_order_url: v.lifting_order_url, published: v.published
@@ -893,6 +893,26 @@
   function money(p) { return (p < 0 ? "−" : "") + "£" + (Math.abs(p) / 100).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
 
+
+
+  // ---- Results: the link to this competition's meet on OpenIPF, shown on the calendar as "View results" ---------
+  function renderResultsTab(view, c) {
+    var form = pageForm([
+      { name: "openipf_url", label: "OpenIPF meet results link", type: "url", placeholder: "https://www.openipf.org/meet/…",
+        help: "Paste the link to this competition's results page on OpenIPF once the results are up. A “View results” button then appears on the calendar. Clear the box to take it off." }
+    ], { openipf_url: c.openipf_url || "" });
+    var bar = saveBar(null, "Save");
+    var f = el("form", { novalidate: true }, form.el, bar.el);
+    view.replaceChildren(f);
+    f.addEventListener("submit", function (e) {
+      e.preventDefault(); bar.clear();
+      var url = String(form.get("openipf_url") || "").trim();
+      if (url && !/^https:\/\//i.test(url)) return bar.fail("The link must start with https://", form.input("openipf_url"));
+      bar.busy(true);
+      sb.from("competitions").update({ openipf_url: url }).eq("id", c.id).then(ok).then(function () { c.openipf_url = url; toast(url ? "Results link saved." : "Results link removed."); bar.busy(false); })
+        .catch(function (err) { bar.busy(false); bar.fail(friendly(err)); });
+    });
+  }
 
   // ---- Waiting list: who is waiting, who has been offered a place, and a button to look after the list now -----
   function renderWaitingTab(view, c) {

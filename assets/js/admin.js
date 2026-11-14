@@ -828,23 +828,23 @@
       }
 
       // Toolbar
-      var q = el("input", { type: "search", id: "entry-search", placeholder: "Search name, email or club", "aria-label": "Search entries", oninput: function (ev) { S.q = ev.target.value.trim(); draw(); } });
-      var st = el("select", { id: "entry-status", "aria-label": "Show", onchange: function (ev) { S.status = ev.target.value; draw(); } },
+      var q = el("input", { class: "control", type: "search", id: "entry-search", placeholder: "Search name, email or club", "aria-label": "Search entries", oninput: function (ev) { S.q = ev.target.value.trim(); draw(); } });
+      var st = el("select", { class: "control", id: "entry-status", "aria-label": "Show", onchange: function (ev) { S.status = ev.target.value; draw(); } },
         [["entered", "Entered (paid and free)"], ["paying", "Paying now"], ["gone", "Cancelled and refunded"], ["all", "Everything"]].map(function (o) { return el("option", { value: o[0] }, o[1]); }));
-      var so = el("select", { id: "entry-sort", "aria-label": "Sort by", onchange: function (ev) { S.sort = ev.target.value; draw(); } },
+      var so = el("select", { class: "control", id: "entry-sort", "aria-label": "Sort by", onchange: function (ev) { S.sort = ev.target.value; draw(); } },
         [["newest", "Newest first"], ["name", "Name A to Z"], ["class", "Weight class"], ["category", "Age category"]].map(function (o) { return el("option", { value: o[0] }, o[1]); }));
-      var g = el("label", { class: "inline-check" }, el("input", { type: "checkbox", onchange: function (ev) { S.guests = ev.target.checked; draw(); } }), " Guests to check");
-      var dp = el("label", { class: "inline-check" }, el("input", { type: "checkbox", onchange: function (ev) { S.dupes = ev.target.checked; draw(); } }), " Possible duplicates");
+      var g = el("div", { class: "field-check" }, el("input", { type: "checkbox", id: "entry-guests", onchange: function (ev) { S.guests = ev.target.checked; draw(); } }), el("label", { for: "entry-guests" }, "Guests to check"));
+      var dp = el("div", { class: "field-check" }, el("input", { type: "checkbox", id: "entry-dupes", onchange: function (ev) { S.dupes = ev.target.checked; draw(); } }), el("label", { for: "entry-dupes" }, "Possible duplicates"));
 
       view.replaceChildren(
         el("div", { class: "actions", style: "margin-bottom:var(--space-3)" },
           btn("Add entry", function () { addEntry(c, refs, reload); }, "btn-primary"),
           btn("Download CSV", function () { downloadEntries(c); }, "btn-secondary"),
-          c.entry_method === "yne" ? btn("Priority entry", function () { editPriority(c); }) : null,
-          c.slug ? el("a", { class: "btn btn-secondary", href: "../entries?c=" + encodeURIComponent(c.slug), target: "_blank", rel: "noopener" }, "Public list") : null),
+          c.entry_method === "yne" ? btn("Priority entry", function () { editPriority(c); }, "btn-secondary") : null,
+          c.slug ? el("a", { class: "btn btn-sm btn-secondary", href: "../entries?c=" + encodeURIComponent(c.slug), target: "_blank", rel: "noopener" }, "Public list") : null),
         el("p", { class: "panel-intro" }, live.length + " entered of " + (c.capacity || "?") + " places. Entry money taken: " + entryMoney(total) + "." +
           (toCheck ? " " + toCheck + (toCheck === 1 ? " guest" : " guests") + " to check." : "") + (Object.keys(dup).length ? " " + Object.keys(dup).length + " entries share an email or membership number with another." : "")),
-        el("div", { class: "entry-toolbar" }, q, st, so, g, dp), count, list);
+        el("div", { class: "control-row" }, q, st, so), el("div", { class: "control-row checks" }, g, dp), count, list);
       draw();
     }).catch(function (e) { view.replaceChildren(el("p", { class: "form-error" }, friendly(e))); });
   }
@@ -887,8 +887,8 @@
       }, "btn-secondary");
       view.replaceChildren(
         el("div", { class: "actions", style: "margin-bottom:var(--space-3)" }, checkBtn),
-        el("p", { class: "panel-intro" }, "The waiting list opens by itself when there are no places left. When a place frees up (a cancellation, a refund, or a place nobody paid for), the person who has waited longest is emailed a personal link and the place is held for them. If they do not take it in time it passes to the next person. Right now: " +
-          (left === null ? "" : left + (left === 1 ? " place is free" : " places are free") + ", ") + active.length + (active.length === 1 ? " person is" : " people are") + " waiting or have an offer."),
+        el("p", { class: "panel-intro" }, "Opens by itself when the competition is full. When a place frees up, the next person is emailed a link and the place is held for them. " +
+          (left === null ? "" : left + (left === 1 ? " place free" : " places free") + ", ") + active.length + " waiting."),
         all.length ? el("div", { class: "table-scroll" }, el("table", { class: "admin-table" },
           el("thead", null, el("tr", null, ["Place in queue", "Name", "Email", "Joined", "Status", "Actions"].map(function (h) { return el("th", { scope: "col" }, h); }))),
           el("tbody", null, all.map(function (w) {

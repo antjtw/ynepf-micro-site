@@ -114,10 +114,6 @@ input:disabled, select:disabled, textarea:disabled { background: var(--navy-10, 
 .callout { margin: 0 0 var(--space-4); }
 
 /* Entries desk: a list of entries, each opening into the full record. */
-.entry-toolbar { display: flex; gap: var(--space-3); flex-wrap: wrap; align-items: center; margin-bottom: var(--space-2); }
-.entry-toolbar input[type="search"] { flex: 1 1 20rem; min-width: 14rem; min-height: 2.75rem; padding: 0 var(--space-3); font: inherit; border: 1.5px solid var(--border-strong); border-radius: var(--radius); }
-.entry-toolbar select { min-height: 2.75rem; font: inherit; padding: 0 2.5rem 0 var(--space-3); border: 1.5px solid var(--border-strong); border-radius: var(--radius); background-color: var(--surface-raised); }
-.inline-check { display: inline-flex; align-items: center; gap: var(--space-2); font-weight: 600; cursor: pointer; }
 .entry-list { display: grid; gap: var(--space-2); }
 .entry-row { background: var(--surface-raised); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); }
 .entry-row > summary { display: grid; grid-template-columns: minmax(10rem, 1.3fr) 2fr auto auto; gap: var(--space-4); align-items: center; padding: var(--space-3) var(--space-4); cursor: pointer; list-style: none; }

@@ -482,33 +482,33 @@ table.data tbody tr:hover { background: var(--navy-10); }
    8. Forms
    ========================================================================== */
 .field { margin-bottom: var(--space-5); }
-.field label, .field .label { display: block; font-weight: 600; margin-bottom: var(--space-1); color: var(--text-heading); }
+.field label, .field .label { display: block; font-weight: 600; margin-bottom: var(--space-1); color: var(--text-heading); font-size: 1.1875rem; line-height: 1.4; }
 .field .help { color: var(--text-muted); font-size: var(--fs-16); margin: 0 0 var(--space-2); }
 .field input[type="text"], .field input[type="url"], .field input[type="email"], .field input[type="password"], .field input[type="search"],
-.field input[type="date"], .field input[type="datetime-local"], .field input[type="number"], .field input[type="tel"], .field input[type="time"], .field select, .field textarea, .rec-tools input {
-  width: 100%; font: inherit; color: var(--text-default); background: var(--surface-raised);
+.field input[type="date"], .field input[type="datetime-local"], .field input[type="number"], .field input[type="tel"], .field input[type="time"], .field select, .field textarea, .rec-tools input,
+input.control, select.control {
+  width: 100%; font: inherit; font-size: 1.1875rem; color: var(--text-default); background: var(--surface-raised);
   padding: var(--space-3) var(--space-4); min-height: 3rem;
   border: 1.5px solid var(--border-strong); border-radius: var(--radius);
   transition: border-color var(--dur-fast) ease;
 }
-.field input:hover, .field select:hover, .field textarea:hover, .rec-tools input:hover { border-color: var(--navy-800); }
+.field input:hover, .field select:hover, .field textarea:hover, .rec-tools input:hover, input.control:hover, select.control:hover { border-color: var(--navy-800); }
 .field textarea { min-height: 9rem; resize: vertical; line-height: 1.5; }
 /* Checkboxes and radio buttons: the one style used everywhere (public forms and the editor). 40px targets like GOV.UK and the NHS,
    a label row at least 44px high, a centred tick. */
-.field-check, .inline-check { --box: 2.5rem; }
-.inline-check { --box: 2rem; }                       /* the same box, a little smaller, for filter rows */
+.field-check { --box: 2.5rem; }
 .field-check { position: relative; display: flex; align-items: flex-start; gap: var(--space-3); margin-bottom: 0.25rem; }
-.field-check input[type="checkbox"], .field-check input[type="radio"], .inline-check input[type="checkbox"] {
+.field-check input[type="checkbox"], .field-check input[type="radio"] {
   -webkit-appearance: none; appearance: none; position: relative; flex: none; width: var(--box); height: var(--box); margin: 0.125rem 0 0;
   background: var(--surface-raised); border: 2px solid var(--navy-950); cursor: pointer;
 }
 .field-check input[type="radio"] { border-radius: 50%; }
-.field-check input[type="checkbox"], .inline-check input[type="checkbox"] { border-radius: 4px; }
+.field-check input[type="checkbox"] { border-radius: 4px; }
 .field-check input[type="radio"]::before { content: ""; position: absolute; inset: 0.5rem; border-radius: 50%; background: var(--accent-ink); opacity: 0; }
-.field-check input[type="checkbox"]::after, .inline-check input[type="checkbox"]::after { content: ""; position: absolute; left: calc(var(--box) * 0.216); top: calc(var(--box) * 0.308); width: calc(var(--box) * 0.44); height: calc(var(--box) * 0.22); border: solid var(--accent-ink); border-width: 0 0 calc(var(--box) * 0.1) calc(var(--box) * 0.1); transform: rotate(-45deg); opacity: 0; }
-.field-check input:checked::before, .field-check input:checked::after, .inline-check input:checked::after { opacity: 1; }
-.field-check input:hover, .inline-check input:hover { border-color: var(--accent-ink); }
-.field-check input:focus-visible, .inline-check input:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; box-shadow: 0 0 0 3px var(--focus-text); }
+.field-check input[type="checkbox"]::after::after { content: ""; position: absolute; left: calc(var(--box) * 0.216); top: calc(var(--box) * 0.308); width: calc(var(--box) * 0.44); height: calc(var(--box) * 0.22); border: solid var(--accent-ink); border-width: 0 0 calc(var(--box) * 0.1) calc(var(--box) * 0.1); transform: rotate(-45deg); opacity: 0; }
+.field-check input:checked::before, .field-check input:checked::after { opacity: 1; }
+.field-check input:hover { border-color: var(--accent-ink); }
+.field-check input:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; box-shadow: 0 0 0 3px var(--focus-text); }
 .field-check input:disabled { cursor: not-allowed; opacity: 0.55; }
 .field-check label { display: block; margin: 0; font-weight: 600; cursor: pointer; padding: 0.5rem 0 0.1rem; font-size: 1.1875rem; line-height: 1.4; }
 .field-check label:only-child { min-height: 2.75rem; padding: 0.6rem 0; }     /* no hint under it: the whole row is a 44px target */
@@ -588,12 +588,7 @@ table.records tr[hidden] { display: none; }
 .calc-card { padding: var(--space-6); }
 .calc-card .field:last-child { margin-bottom: 0; }
 fieldset.choice { border: 0; padding: 0; margin: 0 0 var(--space-5); min-width: 0; }
-fieldset.choice legend { padding: 0; margin-bottom: var(--space-2); font-weight: 600; color: var(--text-heading); }
-.choice-options { display: flex; flex-wrap: wrap; gap: var(--space-2); }
-.choice-option { display: inline-flex; align-items: center; gap: 0.6rem; min-height: 2.75rem; padding: 0.5rem 1rem; border-radius: var(--radius); background: var(--surface-muted); color: var(--text-heading); font-weight: 600; cursor: pointer; transition: background-color var(--dur-fast) ease, box-shadow var(--dur-fast) ease; }
-.choice-option:hover { background: var(--navy-100); }
-.choice-option input { width: 1.25rem; height: 1.25rem; margin: 0; accent-color: var(--accent); flex: none; }
-.choice-option:has(input:checked) { background: var(--surface-raised); box-shadow: inset 0 0 0 2px var(--navy-800); }
+fieldset.choice legend { padding: 0; margin-bottom: var(--space-2); font-weight: 600; color: var(--text-heading); font-size: 1.1875rem; line-height: 1.4; }
 .input-suffix { display: flex; align-items: center; gap: var(--space-2); max-width: 14rem; }
 .input-suffix input { flex: 1; min-width: 0; }
 .input-suffix span { color: var(--text-muted); font-weight: 600; }
@@ -687,10 +682,7 @@ table.lifters thead th { overflow-wrap: normal; }
    Labels are 19px, helper text 16px, and fields are spaced 32px apart. */
 .form-touch .field { margin-bottom: 2rem; }
 .form-touch fieldset.choice { margin-bottom: 2rem; }
-.form-touch .field > label, .form-touch legend { font-size: 1.1875rem; line-height: 1.4; }
 .form-touch .field .help, .form-touch .help { font-size: 1rem; line-height: 1.45; }
-.form-touch .field input[type="text"], .form-touch .field input[type="url"], .form-touch .field input[type="email"], .form-touch .field input[type="tel"],
-.form-touch .field select, .form-touch .field textarea { font-size: 1.1875rem; min-height: 3rem; }
   -webkit-appearance: none; appearance: none; position: relative; flex: none; width: 2.5rem; height: 2.5rem; margin: 0;
   background: var(--surface-raised); border: 2px solid var(--navy-950); cursor: pointer;
 }
@@ -702,15 +694,21 @@ table.lifters thead th { overflow-wrap: normal; }
 
 /* Dropdowns: the same box as the other fields, with our own arrow instead of the browser's. (The list that opens is
    drawn by the browser or phone itself, which is what keeps it accessible and easy to use on a touch screen.) */
-.field select {
+.field select, select.control {
   -webkit-appearance: none; appearance: none; cursor: pointer; padding-right: 3rem; text-overflow: ellipsis;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23152C41' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: right 1rem center; background-size: 1.25rem;
 }
-.field select:disabled { cursor: not-allowed; }
+.field select:disabled, select.control:disabled { cursor: not-allowed; }
 /* The entry fee line on the lifting step always takes the same room, so the buttons never jump when it fills in. */
 #fee-line { min-height: 2.7em; }
 .discount-row { display: flex; gap: var(--space-3); align-items: stretch; flex-wrap: wrap; }
 .discount-row input { flex: 1 1 14rem; text-transform: uppercase; }
 .discount-bad { color: var(--error-text); font-weight: 600; }
 #discount-status { min-height: 1.45em; margin-top: var(--space-2); }
+
+/* Filter and search controls that sit outside a form field (the entries desk): the same boxes, sized to fit a row. */
+.control-row { display: flex; gap: var(--space-3); flex-wrap: wrap; align-items: center; margin-bottom: var(--space-3); }
+.control-row input.control[type="search"] { flex: 1 1 20rem; min-width: 14rem; width: auto; }
+.control-row select.control { width: auto; min-width: 12rem; }
+.control-row.checks { gap: var(--space-5); }

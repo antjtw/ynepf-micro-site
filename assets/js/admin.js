@@ -302,7 +302,7 @@
   var STATE_LABEL = { archived: "Past", open: "Entry open", closed: "Entry closed", full: "Entries full", soon: "Entry not open yet", none: "No entry set" };
   var ENTRY_ERRORS = {
     "invalid:events": "Choose at least one event.", "invalid:equipment": "Choose at least one kind of equipment.",
-    "invalid:hold_minutes": "The hold must be between 5 and 30 minutes.", "invalid:guest_delay_days": "Guest entry delay must be between 0 and 90 days.",
+    "invalid:hold_minutes": "The hold must be between 5 and 30 minutes.", "invalid:offer_window_hours": "A waiting list offer must last between 1 and 168 hours.", "invalid:guest_delay_days": "Guest entry delay must be between 0 and 90 days.",
     "invalid:price_full_power": "Set a full power price of more than £0.", "invalid:price_bench_only": "Set a bench only price of more than £0.",
     "invalid:price_sub_junior": "The sub-junior price must be more than £0, or left empty.", "invalid:capacity": "Set the number of spaces first.",
     forbidden: "You do not have permission to change entry settings."
@@ -332,7 +332,7 @@
     sb.from("competitions").select("*").eq("id", args[0]).maybeSingle().then(function (res) {
       var c = ok(res);
       if (!c) return panel.replaceChildren(panelHead("Not found"), el("p", null, "That item no longer exists."), backLink());
-      renderEditor(panel, c, c.kind === "event" ? "event" : "competition", args[1] === "entries" ? "entries" : args[1] === "discounts" ? "discounts" : args[1] === "money" ? "money" : args[1] === "extras" ? "extras" : "details");
+      renderEditor(panel, c, c.kind === "event" ? "event" : "competition", args[1] === "entries" ? "entries" : args[1] === "discounts" ? "discounts" : args[1] === "money" ? "money" : args[1] === "extras" ? "extras" : args[1] === "waiting" ? "waiting" : "details");
     }).catch(function (e) { panel.replaceChildren(el("p", { class: "form-error" }, friendly(e)), backLink()); });
   }
 
@@ -472,6 +472,7 @@
     if (!isNew && !isEvent) {
       var tabs = el("nav", { class: "admin-tabs subtabs", "aria-label": c.name }, el("a", { href: "#competitions/" + c.id, "aria-current": tab === "details" ? "page" : null }, "Details"));
       if (canEntry()) tabs.appendChild(el("a", { href: "#competitions/" + c.id + "/entries", "aria-current": tab === "entries" ? "page" : null }, "Entries"));
+      if (canEntry() && c.entry_method === "yne") tabs.appendChild(el("a", { href: "#competitions/" + c.id + "/waiting", "aria-current": tab === "waiting" ? "page" : null }, "Waiting list"));
       if (canEntry()) tabs.appendChild(el("a", { href: "#competitions/" + c.id + "/discounts", "aria-current": tab === "discounts" ? "page" : null }, "Discounts"));
       if (canEntry()) tabs.appendChild(el("a", { href: "#competitions/" + c.id + "/extras", "aria-current": tab === "extras" ? "page" : null }, "Extras"));
       if (canEntry()) tabs.appendChild(el("a", { href: "#competitions/" + c.id + "/money", "aria-current": tab === "money" ? "page" : null }, "Money"));
@@ -479,6 +480,7 @@
     }
     panel.appendChild(view);
     if (tab === "entries" && !isNew && !isEvent) return renderEntriesTab(view, c);
+    if (tab === "waiting" && !isNew && !isEvent) return renderWaitingTab(view, c);
     if (tab === "discounts" && !isNew && !isEvent) return renderDiscountsTab(view, c);
     if (tab === "extras" && !isNew && !isEvent) return renderExtrasTab(view, c);
     if (tab === "money" && !isNew && !isEvent) return renderMoneyTab(view, c);
@@ -546,6 +548,7 @@
         E({ name: "is_franchise", label: "This is a franchise competition (run by a host)", type: "checkbox", show: isOnline, help: "Tick it when a host runs the competition: they receive the entry fee less the federation's fixed amount for each entry. Leave it unticked for a competition the federation runs itself: the federation keeps the whole entry fee." }),
         E({ name: "openipf_required", label: "Entry needs a qualifying total (the OpenIPF link becomes mandatory)", type: "checkbox", show: isOnline }),
         E({ name: "hold_minutes", label: "Minutes a place is held while paying", type: "number", min: "5", show: isOnline, help: "Between 5 and 30. A short hold stops places being parked." }),
+        E({ name: "offer_window_hours", label: "Hours an offered place is held for the waiting list", type: "number", min: "1", show: isOnline, help: "When the competition is full, the waiting list opens by itself. When a place frees up, the person who has waited longest is emailed a personal link and has this long to use it (up to 168 hours). Then it passes to the next person." }),
         E({ name: "guest_delay_days", label: "Guests can enter this many days after entry opens", type: "number", min: "0", show: isOnline, help: "A guest is anyone outside the Yorkshire & North East division. Usually 14 (two weeks). They are told the date on the entry form." }),
         { heading: "Full, closed and waiting list" },
         C({ name: "entries_full", label: "Entries full", type: "checkbox", help: "Tick when the competition fills up. The main button becomes “Join the waiting list” (if you add a link below)." }),
@@ -579,7 +582,7 @@
         eq_classic: equip.indexOf("classic") >= 0, eq_equipped: equip.indexOf("equipped") >= 0,
         p_full: price(function (r) { return r.event === "full_power" && !r.age_category; }), p_bench: price(function (r) { return r.event === "bench_only" && !r.age_category; }),
         p_sj: price(function (r) { return r.age_category === "SJ"; }),
-        openipf_required: settings.openipf_mode === "required", hold_minutes: settings.hold_minutes || 5, guest_delay_days: settings.guest_delay_days === undefined || settings.guest_delay_days === null ? 14 : settings.guest_delay_days,
+        openipf_required: settings.openipf_mode === "required", hold_minutes: settings.hold_minutes || 5, offer_window_hours: settings.offer_window_hours || 48, guest_delay_days: settings.guest_delay_days === undefined || settings.guest_delay_days === null ? 14 : settings.guest_delay_days,
         entries_closed_manually: !!c.entries_closed_manually, is_franchise: isNew ? true : c.is_franchise !== false
       });
       var F = fields();
@@ -640,7 +643,7 @@
         step.then(function (id) {
           if (!canEntry()) return id;
           var p = {
-            entry_method: v.method === "online" ? "yne" : "external", hold_minutes: v.hold_minutes || 5, guest_delay_days: v.guest_delay_days === null ? 14 : v.guest_delay_days, entries_closed_manually: !!v.entries_closed_manually, is_franchise: !!v.is_franchise,
+            entry_method: v.method === "online" ? "yne" : "external", hold_minutes: v.hold_minutes || 5, guest_delay_days: v.guest_delay_days === null ? 14 : v.guest_delay_days, offer_window_hours: v.offer_window_hours || 48, entries_closed_manually: !!v.entries_closed_manually, is_franchise: !!v.is_franchise,
             openipf_required: !!v.openipf_required,
             events: [v.ev_full && "full_power", v.ev_bench && "bench_only"].filter(Boolean), equipment: [v.eq_classic && "classic", v.eq_equipped && "equipped"].filter(Boolean),
             prices: { full_power: pence(v.p_full), bench_only: pence(v.p_bench), sub_junior: pence(v.p_sj) }
@@ -854,6 +857,52 @@
   var CATEGORY_NAMES = { entry: "Entry money", merch: "Merchandise", photo: "Photo packages" };
   function money(p) { return (p < 0 ? "−" : "") + "£" + (Math.abs(p) / 100).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
+
+
+  // ---- Waiting list: who is waiting, who has been offered a place, and a button to look after the list now -----
+  function renderWaitingTab(view, c) {
+    view.replaceChildren(el("p", null, "Loading…"));
+    Promise.all([
+      sb.from("waiting_list").select("*, offers(expires_at, outcome, offered_at)").eq("competition_id", c.id).order("joined_at"),
+      sb.rpc("places_left", { c: c.id })
+    ]).then(function (res) {
+      if (res[0].error) throw res[0].error;
+      var all = res[0].data || [], left = res[1].error ? null : res[1].data, now = new Date();
+      var active = all.filter(function (w) { return w.status === "waiting" || w.status === "offered"; });
+      all = active.concat(all.filter(function (w) { return active.indexOf(w) < 0; }));        // the queue first, then people who are no longer waiting
+      function offerOf(w) { return (w.offers || []).filter(function (o) { return !o.outcome; }).sort(function (p, q) { return new Date(q.offered_at) - new Date(p.offered_at); })[0]; }
+      function stateOf(w) {
+        var o = offerOf(w);
+        if (w.status === "offered" && o) return ["Offered until " + new Date(o.expires_at).toLocaleString("en-GB", { timeZone: Y.TZ, dateStyle: "medium", timeStyle: "short" }), "tag tag-open"];
+        return ({ waiting: ["Waiting", "tag tag-position"], entered: ["Entered", "tag tag-open"], lapsed: ["Did not take the place", "tag tag-full"], declined: ["Declined", "tag tag-full"], removed: ["Removed", "tag tag-full"], offered: ["Offered", "tag tag-open"] })[w.status] || [w.status, "tag"];
+      }
+      var checkBtn = btn("Check the list now", function () {
+        checkBtn.disabled = true;
+        sb.auth.getSession().then(function (s) {
+          var token = s.data && s.data.session && s.data.session.access_token;
+          return fetch((window.YNEPF_CONFIG.supabaseUrl || "").replace(/\/$/, "") + "/functions/v1/waitlist", { method: "POST", headers: { "Content-Type": "application/json", apikey: window.YNEPF_CONFIG.supabaseAnonKey || "", Authorization: "Bearer " + token }, body: JSON.stringify({ action: "run", competition_id: c.id }) });
+        }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (b) { if (!r.ok) throw new Error(b.error === "not_allowed" ? "You do not have permission to do that." : "The waiting list function did not answer. Check that it has been added in Supabase."); return b; }); })
+          .then(function (b) { toast("Done: " + b.offers + " offered, " + b.reminders + " reminders, " + b.expired + " ended" + (b.failed ? ", " + b.failed + " emails failed" : "") + "."); renderWaitingTab(view, c); })
+          .catch(function (e) { toast(friendly(e), "error"); checkBtn.disabled = false; });
+      }, "btn-secondary");
+      view.replaceChildren(
+        el("div", { class: "actions", style: "margin-bottom:var(--space-3)" }, checkBtn),
+        el("p", { class: "panel-intro" }, "The waiting list opens by itself when there are no places left. When a place frees up (a cancellation, a refund, or a place nobody paid for), the person who has waited longest is emailed a personal link and the place is held for them. If they do not take it in time it passes to the next person. Right now: " +
+          (left === null ? "" : left + (left === 1 ? " place is free" : " places are free") + ", ") + active.length + (active.length === 1 ? " person is" : " people are") + " waiting or have an offer."),
+        all.length ? el("div", { class: "table-scroll" }, el("table", { class: "admin-table" },
+          el("thead", null, el("tr", null, ["Place in queue", "Name", "Email", "Joined", "Status", "Actions"].map(function (h) { return el("th", { scope: "col" }, h); }))),
+          el("tbody", null, all.map(function (w) {
+            var pos = active.indexOf(w) + 1, st = stateOf(w);
+            return el("tr", null, el("td", null, pos ? String(pos) : "–"), el("th", { scope: "row" }, w.full_name), el("td", null, w.email),
+              el("td", null, new Date(w.joined_at).toLocaleString("en-GB", { timeZone: Y.TZ, dateStyle: "medium", timeStyle: "short" })),
+              el("td", null, el("span", { class: st[1] }, st[0])),
+              el("td", null, w.status === "waiting" || w.status === "offered" ? el("span", { class: "actions" }, btn(w.status === "offered" ? "Withdraw offer" : "Remove", function () {
+                if (!window.confirm((w.status === "offered" ? "Withdraw the offer to " : "Take off the list: ") + w.full_name + "? " + (w.status === "offered" ? "The place goes to the next person." : ""))) return;
+                sb.rpc("waitlist_remove", { wid: w.id }).then(function (r) { if (r.error) throw r.error; toast("Done."); renderWaitingTab(view, c); }).catch(function (e) { toast(friendly(e), "error"); });
+              }, "btn-danger")) : ""));
+          })))) : el("p", { class: "empty" }, "Nobody is on the waiting list."));
+    }).catch(function (e) { view.replaceChildren(el("p", { class: "form-error" }, friendly(e))); });
+  }
 
   // ---- Extras: a photo package, merchandise (a T-shirt in sizes) offered on the entry form ------------------
   var EXTRA_KINDS = { photo: "Photo package", merch: "Merchandise", federation: "Federation" };

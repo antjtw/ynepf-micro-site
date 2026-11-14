@@ -65,4 +65,20 @@ assert(es.validEntry("123e4567-e89b-12d3-a456-426614174000") && !es.validEntry("
   for (const mod of [co, wh]) { const t = mod.confirmationEmail(m); assert(t.includes("Extra: T-shirt (Medium), £20.00") && t.includes("Extra: Photo package, £40.49") && t.includes("Paid: £100.49"), "extras are listed in the email"); }
   assert(!co.confirmationEmail({ ...m, extras: undefined }).includes("Extra:"), "no extras, no extra lines");
 }
+
+{ // waiting list function helpers
+  const wl = await import("../../supabase/functions/waitlist/index.ts");
+  const tok = wl.newToken();
+  assert(/^[0-9a-f]{48}$/.test(tok) && tok !== wl.newToken(), "offer tokens are long and random");
+  assert.strictEqual(await wl.sha256Hex("abc"), crypto.createHash("sha256").update("abc").digest("hex"), "the hash matches what the database computes (sha256 hex)");
+  assert.strictEqual(wl.offerLink("https://www.ynepf.co.uk/", "2027-test open", "tok"), "https://www.ynepf.co.uk/enter?c=2027-test%20open&offer=tok", "the personal link");
+  const who = { name: "Ann", competition: "Spring Open", date: "13 March 2027", entriesEmail: "e@x.co" };
+  assert(wl.joinedEmail({ ...who, position: 3, hours: 48 }).includes("number 3") && wl.joinedEmail({ ...who, position: 3, hours: 48 }).includes("48 hours"), "joined email");
+  const o = wl.offerEmail({ ...who, link: "https://x/enter?c=a&offer=b", expiresAt: "2027-01-02T12:00:00Z" });
+  assert(o.includes("https://x/enter?c=a&offer=b") && /Saturday,? 2 January 2027 at 12:00/.test(o), "offer email has the link and the deadline in UK time: " + o);
+  assert(wl.reminderEmail({ ...who, expiresAt: "2027-07-02T12:00:00Z", slug: "a", siteUrl: "https://x" }).includes("2 July 2027 at 13:00"), "summer deadlines are shown in British Summer Time");
+  assert(wl.expiredEmail({ ...who, slug: "a", siteUrl: "https://x/" }).includes("https://x/enter?c=a"), "expired email says how to rejoin");
+  assert.strictEqual(wl.errorCode("ERROR: not_full\nCONTEXT"), "not_full"); assert.strictEqual(wl.errorCode("boom"), "unknown");
+  let n = 0; for (let i = 0; i < 10; i++) if (wl.allowTry("k", 1000)) n++; assert.strictEqual(n, 6, "joining is rate limited");
+}
 console.log("function helper tests passed");

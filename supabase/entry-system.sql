@@ -339,6 +339,8 @@ create table if not exists public.entries (
   cancelled_at timestamptz,
   cancel_reason text not null default ''
 );
+-- The waiting list entry this place came from (set when someone enters with an offered place).
+-- (waiting_list is created further down, so the column and its link are added after it exists; see section 7.)
 -- Added for the entries desk: whether the entries team has checked the membership number (for guests), and a private note.
 alter table public.entries add column if not exists membership_checked boolean not null default false;
 alter table public.entries add column if not exists discount_code_id uuid references public.discount_codes (id) on delete set null;
@@ -466,6 +468,21 @@ create table if not exists public.invites (                -- priority entry (ph
   used_at timestamptz,
   entry_id uuid references public.entries (id) on delete set null          -- the entry started with this link
 );
+alter table public.entries add column if not exists waiting_id uuid references public.waiting_list (id) on delete set null;
+
+-- A place offered to someone on the waiting list is theirs for the offer window, so it counts as taken.
+-- It stops counting once they have a live entry (that entry counts instead), or the offer ends.
+create or replace function public.places_taken(c uuid) returns integer
+language sql stable security definer set search_path = public
+as $$
+  select (select count(*)::int from public.entries
+           where competition_id = c and (status in ('paid', 'comped') or (status = 'held' and hold_expires_at > now())))
+       + (select count(*)::int from public.offers o join public.waiting_list w on w.id = o.waiting_id
+           where w.competition_id = c and o.outcome is null and o.expires_at > now()
+             and not exists (select 1 from public.entries e where e.waiting_id = w.id
+                               and (e.status in ('paid', 'comped') or (e.status = 'held' and e.hold_expires_at > now()))))
+$$;
+
 alter table public.invites add column if not exists entry_id uuid references public.entries (id) on delete set null;
 
 -- ---------------------------------------------------------------------------
@@ -760,6 +777,37 @@ select w.competition_id, w.full_name as name,
 from public.waiting_list w
 where w.status in ('waiting', 'offered');
 
+-- The public calendar view again, now with the waiting list switching on by itself: for online entry, "full" is simply
+-- "no places left". Everything else is as in schema.sql.
+drop view if exists public.competitions_public;
+create view public.competitions_public as
+select
+  k.id, k.name, k.description, k.label, k.kind, k.start_date, k.end_date, k.start_time, k.end_time,
+  k.venue_name, k.venue_address, k.map_url, k.capacity,
+  k.entry_opens, k.entry_closes, (k.entries_full or k.auto_full) as entries_full,
+  case
+    when not (k.entries_full or k.auto_full)
+     and not k.entries_closed_manually
+     and (k.entry_opens is null or k.entry_opens <= now())
+     and (k.entry_closes is null or k.entry_closes > now())
+    then case when k.entry_method = 'yne' and k.slug <> '' then '/enter?c=' || k.slug
+              when k.entry_method = 'external' then k.entry_url
+              else '' end
+    else ''
+  end as entry_url,
+  k.entry_method,
+  case when k.entry_method = 'yne' and k.auto_full and k.slug <> '' then '/enter?c=' || k.slug
+       when k.entries_full then k.waitlist_url else '' end as waitlist_url,
+  k.lifting_order_url,
+  k.openipf_url,
+  k.slug
+from (
+  select c.*, (c.entry_method = 'yne' and not c.entries_closed_manually and (c.entry_opens is null or c.entry_opens <= now())
+               and (c.entry_closes is null or c.entry_closes > now()) and public.places_left(c.id) < 1) as auto_full
+    from public.competitions c where c.published
+) k;
+grant select on public.competitions_public to anon, authenticated;
+
 -- The state of entry for a competition card or page.
 drop view if exists public.competition_entry_state;
 create view public.competition_entry_state as
@@ -877,6 +925,8 @@ declare
   v_opt public.addon_options%rowtype;
   v_seen uuid[] := '{}';
   v_entry_price integer;
+  v_offer uuid;
+  v_wait uuid;
 begin
   -- "TBC" and the like are accepted when someone does not have their number yet; they are not a number to compare.
   if v_bp ~ '^(tbc|tbd|n/?a|none|unknown|pending|\?+|-+|x+|0+)$' then v_bp := ''; end if;
@@ -955,7 +1005,14 @@ begin
   update public.entries set status = 'cancelled', cancelled_at = now(), cancel_reason = 'replaced by a new attempt'
     where competition_id = c.id and status = 'held' and (email = v_email or (v_bp <> '' and lower(bp_number) = v_bp));
 
-  if public.places_left(c.id) < 1 then raise exception 'full'; end if;
+  -- Someone with a place offered from the waiting list (a personal link made for their email) may take it even though the
+  -- competition is full: the place is being held for them.
+  if btrim(coalesce(p->>'offer', '')) <> '' then
+    select o.id, w.id into v_offer, v_wait from public.offers o join public.waiting_list w on w.id = o.waiting_id
+      where w.competition_id = c.id and w.email = v_email and o.outcome is null and o.expires_at > now()
+        and o.token_hash = encode(sha256(convert_to(btrim(p->>'offer'), 'UTF8')), 'hex');
+  end if;
+  if v_offer is null and public.places_left(c.id) < 1 then raise exception 'full'; end if;
 
   -- Price: first matching rule wins.
   v_cat := public.age_category_on(v_dob, c.start_date);
@@ -1005,11 +1062,12 @@ begin
   insert into public.entries (competition_id, status, source, stage_id, email, full_name, display_name, bp_number, date_of_birth, sex,
       division_id, club, instagram, photo_ok, photo_opt_out, eligibility_confirmed, weight_class_id, equipment, event,
       openipf_url, price_pence, hold_expires_at, is_guest, paid_at, discount_code_id, discount_pence, list_price_pence)
-    values (c.id, case when v_free then 'comped' else 'held' end, 'web', v_stage, v_email, v_name, trim(coalesce(p->>'display_name', '')), trim(coalesce(p->>'bp_number', '')), v_dob, v_sex,
+    values (c.id, case when v_free then 'comped' else 'held' end, case when v_offer is not null then 'offer' else 'web' end, v_stage, v_email, v_name, trim(coalesce(p->>'display_name', '')), trim(coalesce(p->>'bp_number', '')), v_dob, v_sex,
       v_d.id, v_club, trim(coalesce(p->>'instagram', '')),
       coalesce((p->>'photo_ok')::boolean, false), coalesce((p->>'photo_opt_out')::boolean, false), coalesce((p->>'eligibility_confirmed')::boolean, false), v_class, v_equip, v_event,
       trim(coalesce(p->>'openipf_url', '')), v_price, case when v_free then null else v_expires end, v_guest, case when v_free then now() end, v_code_id, v_discount, v_entry_price + v_discount)
     returning id into v_entry;
+  if v_wait is not null then update public.entries set waiting_id = v_wait where id = v_entry; end if;
   for v_x in select * from jsonb_array_elements(v_lines) loop
     insert into public.entry_addons (entry_id, addon_id, option_id, quantity, price_pence)
       values (v_entry, (v_x->>'addon_id')::uuid, nullif(v_x->>'option_id', '')::uuid, 1, (v_x->>'price')::int);
@@ -1026,6 +1084,173 @@ revoke all on function public.start_entry(jsonb) from public, anon, authenticate
 do $$ begin
   if exists (select 1 from pg_roles where rolname = 'service_role') then
     grant execute on function public.start_entry(jsonb) to service_role;
+  end if;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- The waiting list (automatic). When a competition is full, people join (name and email). When a place frees up (a
+-- cancellation, a refund, a hold that ran out, more places added) the person who has waited longest is offered it for
+-- the offer window (48 hours by default) through a personal link. If they do not take it, it passes to the next.
+-- The functions below do the bookkeeping; the waitlist Edge Function sends the emails and runs them on a timer.
+-- All of them are for the service role only, except waitlist_remove (entries team).
+-- ---------------------------------------------------------------------------
+create or replace function public.waitlist_join(p jsonb) returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare
+  c public.competitions%rowtype;
+  v_email text := lower(trim(coalesce(p->>'email', '')));
+  v_name text := trim(coalesce(p->>'full_name', ''));
+  w public.waiting_list%rowtype;
+  v_pos integer;
+  v_already boolean := false;
+begin
+  select * into c from public.competitions where id = (p->>'competition_id')::uuid;
+  if not found or c.entry_method <> 'yne' then raise exception 'closed'; end if;
+  if not c.published and not coalesce((p->>'allow_unpublished')::boolean, false) then raise exception 'closed'; end if;
+  if c.entries_closed_manually or coalesce(c.entry_closes, 'infinity') <= now() then raise exception 'closed'; end if;
+  if v_name = '' or char_length(v_name) > 120 then raise exception 'invalid:full_name'; end if;
+  if v_email !~ '^[^@\s]+@[^@\s]+\.[^@\s]+$' or char_length(v_email) > 200 then raise exception 'invalid:email'; end if;
+  if exists (select 1 from public.entries where competition_id = c.id and email = v_email and status in ('paid', 'comped')) then raise exception 'already_entered'; end if;
+  if public.places_left(c.id) > 0 then raise exception 'not_full'; end if;
+  select * into w from public.waiting_list where competition_id = c.id and email = v_email;
+  if found then
+    if w.status in ('waiting', 'offered') then
+      v_already := true;
+      update public.waiting_list set full_name = v_name where id = w.id;
+    else
+      -- they left or lapsed earlier: back to the end of the queue
+      update public.waiting_list set status = 'waiting', full_name = v_name, joined_at = now() where id = w.id;
+    end if;
+  else
+    insert into public.waiting_list (competition_id, email, full_name) values (c.id, v_email, v_name) returning * into w;
+  end if;
+  select count(*)::int into v_pos from public.waiting_list x
+    where x.competition_id = c.id and x.status in ('waiting', 'offered') and x.joined_at <= (select joined_at from public.waiting_list where id = w.id);
+  return jsonb_build_object('waiting_id', w.id, 'position', v_pos, 'competition', c.name, 'slug', c.slug,
+    'already', v_already, 'window_hours', coalesce((select offer_window_hours from public.entry_settings where competition_id = c.id), 48));
+end
+$$;
+
+-- Does this offer link work? (the entry page asks, so it can show the form instead of "full")
+create or replace function public.waitlist_offer_info(p jsonb) returns jsonb
+language sql stable security definer set search_path = public
+as $$
+  select coalesce((select jsonb_build_object('ok', true, 'name', w.full_name, 'email', w.email, 'expires_at', o.expires_at)
+    from public.offers o join public.waiting_list w on w.id = o.waiting_id
+   where w.competition_id = (p->>'competition_id')::uuid and o.outcome is null and o.expires_at > now()
+     and o.token_hash = encode(sha256(convert_to(btrim(coalesce(p->>'offer', '')), 'UTF8')), 'hex')), jsonb_build_object('ok', false))
+$$;
+
+-- Housekeeping for one competition: marks offers taken up, ends offers that ran out, and lists reminders to send.
+-- Returns what to email: [{kind: 'expired' | 'reminder', waiting_id, email, name, expires_at}]
+create or replace function public.waitlist_sweep(c uuid) returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare
+  remind integer := coalesce((select offer_reminder_hours from public.entry_settings where competition_id = c), 12);
+  out jsonb := '[]'::jsonb;
+  r record;
+begin
+  -- taken up: they have a paid or free entry from the offer
+  update public.offers o set outcome = 'entered'
+    where o.outcome is null and exists (select 1 from public.waiting_list w join public.entries e on e.waiting_id = w.id
+      where w.id = o.waiting_id and w.competition_id = c and e.status in ('paid', 'comped'));
+  update public.waiting_list w set status = 'entered'
+    where w.competition_id = c and w.status = 'offered' and exists (select 1 from public.entries e where e.waiting_id = w.id and e.status in ('paid', 'comped'));
+  -- ran out (and they are not midway through paying)
+  for r in
+    select o.id, w.id as wid, w.email, w.full_name, o.expires_at from public.offers o join public.waiting_list w on w.id = o.waiting_id
+     where w.competition_id = c and o.outcome is null and o.expires_at <= now()
+       and not exists (select 1 from public.entries e where e.waiting_id = w.id and e.status = 'held' and e.hold_expires_at > now())
+  loop
+    update public.offers set outcome = 'lapsed' where id = r.id;
+    update public.waiting_list set status = 'lapsed' where id = r.wid;
+    out := out || jsonb_build_array(jsonb_build_object('kind', 'expired', 'waiting_id', r.wid, 'email', r.email, 'name', r.full_name, 'expires_at', r.expires_at));
+  end loop;
+  -- reminders, once, when the offer is nearly over
+  for r in
+    select o.id, w.id as wid, w.email, w.full_name, o.expires_at from public.offers o join public.waiting_list w on w.id = o.waiting_id
+     where w.competition_id = c and o.outcome is null and o.expires_at > now() and o.reminder_sent_at is null
+       and o.expires_at - make_interval(hours => remind) <= now()
+       and not exists (select 1 from public.entries e where e.waiting_id = w.id and e.status in ('held', 'paid', 'comped'))
+  loop
+    update public.offers set reminder_sent_at = now() where id = r.id;
+    out := out || jsonb_build_array(jsonb_build_object('kind', 'reminder', 'waiting_id', r.wid, 'email', r.email, 'name', r.full_name, 'expires_at', r.expires_at));
+  end loop;
+  return out;
+end
+$$;
+
+-- Who should be offered a place now: the longest-waiting, as many as there are free places. Nobody once entries are closed,
+-- and nobody if the competition is set to offer by hand.
+create or replace function public.waitlist_candidates(c uuid) returns jsonb
+language plpgsql stable security definer set search_path = public
+as $$
+declare k public.competitions%rowtype; n integer;
+begin
+  select * into k from public.competitions where id = c;
+  if not found or k.entry_method <> 'yne' or k.entries_closed_manually or coalesce(k.entry_closes, 'infinity') <= now() then return '[]'::jsonb; end if;
+  if not coalesce((select offer_automatic from public.entry_settings where competition_id = c), true) then return '[]'::jsonb; end if;
+  n := public.places_left(c);
+  if n < 1 then return '[]'::jsonb; end if;
+  return coalesce((select jsonb_agg(jsonb_build_object('waiting_id', x.id, 'email', x.email, 'name', x.full_name) order by x.joined_at)
+    from (select * from public.waiting_list where competition_id = c and status = 'waiting' order by joined_at limit n) x), '[]'::jsonb);
+end
+$$;
+
+-- Makes the offer (the emailed token is never stored, only its hash). Rechecks there is still a place.
+create or replace function public.waitlist_make_offer(wid uuid, token_hash text) returns timestamptz
+language plpgsql security definer set search_path = public
+as $$
+declare w public.waiting_list%rowtype; hrs integer; v_exp timestamptz;
+begin
+  select * into w from public.waiting_list where id = wid for update;
+  if not found or w.status <> 'waiting' then raise exception 'not_waiting'; end if;
+  perform 1 from public.competitions where id = w.competition_id for update;       -- one at a time per competition
+  if public.places_left(w.competition_id) < 1 then raise exception 'no_place'; end if;
+  hrs := coalesce((select offer_window_hours from public.entry_settings where competition_id = w.competition_id), 48);
+  v_exp := now() + make_interval(hours => hrs);
+  insert into public.offers (waiting_id, token_hash, expires_at) values (wid, token_hash, v_exp);
+  update public.waiting_list set status = 'offered' where id = wid;
+  return v_exp;
+end
+$$;
+
+-- If the email could not be sent, take the offer back so they keep their place in the queue.
+create or replace function public.waitlist_unoffer(wid uuid) returns void
+language plpgsql security definer set search_path = public
+as $$
+begin
+  delete from public.offers where waiting_id = wid and outcome is null and not exists (select 1 from public.entries e where e.waiting_id = wid);
+  update public.waiting_list set status = 'waiting' where id = wid and status = 'offered';
+end
+$$;
+
+-- Competitions that have someone waiting or an offer open (what the timer works through).
+create or replace function public.waitlist_competitions() returns jsonb
+language sql stable security definer set search_path = public
+as $$
+  select coalesce(jsonb_agg(distinct w.competition_id), '[]'::jsonb) from public.waiting_list w where w.status in ('waiting', 'offered')
+$$;
+
+-- The entries team can take someone off the list (or withdraw an offer); the next person is then offered the place.
+create or replace function public.waitlist_remove(wid uuid) returns void
+language plpgsql security definer set search_path = public
+as $$
+begin
+  if not public.is_entries() then raise exception 'forbidden'; end if;
+  update public.offers set outcome = 'declined' where waiting_id = wid and outcome is null;
+  update public.waiting_list set status = 'removed' where id = wid and status in ('waiting', 'offered');
+end
+$$;
+revoke all on function public.waitlist_join(jsonb), public.waitlist_offer_info(jsonb), public.waitlist_sweep(uuid), public.waitlist_candidates(uuid),
+  public.waitlist_make_offer(uuid, text), public.waitlist_unoffer(uuid), public.waitlist_competitions(), public.waitlist_remove(uuid) from public, anon, authenticated;
+grant execute on function public.waitlist_remove(uuid) to authenticated;
+do $$ begin
+  if exists (select 1 from pg_roles where rolname = 'service_role') then
+    grant execute on function public.waitlist_join(jsonb), public.waitlist_offer_info(jsonb), public.waitlist_sweep(uuid), public.waitlist_candidates(uuid),
+      public.waitlist_make_offer(uuid, text), public.waitlist_unoffer(uuid), public.waitlist_competitions() to service_role;
   end if;
 end $$;
 
@@ -1087,6 +1312,7 @@ declare
   v_full integer := nullif(p#>>'{prices,full_power}', '')::int;
   v_method text := coalesce(p->>'entry_method', 'external');
   v_guest_days integer := coalesce((p->>'guest_delay_days')::int, 14);
+  v_offer_hours integer := coalesce((p->>'offer_window_hours')::int, 48);
   v_ipf text := case when coalesce((p->>'openipf_required')::boolean, false) then 'required' else 'optional' end;
 begin
   if not public.is_entries() then raise exception 'forbidden'; end if;
@@ -1100,6 +1326,7 @@ begin
     if cardinality(v_equip) = 0 or not (v_equip <@ array['classic', 'equipped']) then raise exception 'invalid:equipment'; end if;
     if v_hold < 5 or v_hold > 30 then raise exception 'invalid:hold_minutes'; end if;
     if v_guest_days < 0 or v_guest_days > 90 then raise exception 'invalid:guest_delay_days'; end if;
+    if v_offer_hours < 1 or v_offer_hours > 168 then raise exception 'invalid:offer_window_hours'; end if;
     if 'full_power' = any (v_events) and (v_full is null or v_full < 1) then raise exception 'invalid:price_full_power'; end if;
     if 'bench_only' = any (v_events) and (v_bench is null or v_bench < 1) then raise exception 'invalid:price_bench_only'; end if;
     if v_sj is not null and v_sj < 1 then raise exception 'invalid:price_sub_junior'; end if;
@@ -1110,12 +1337,13 @@ begin
     entries_closed_manually = coalesce((p->>'entries_closed_manually')::boolean, false),
     is_franchise = coalesce((p->>'is_franchise')::boolean, is_franchise)
     where id = c;
-  insert into public.entry_settings (competition_id, events, equipment, hold_minutes, openipf_mode, guest_delay_days, updated_at)
+  insert into public.entry_settings (competition_id, events, equipment, hold_minutes, openipf_mode, guest_delay_days, offer_window_hours, updated_at)
     values (c, case when cardinality(v_events) = 0 then array['full_power', 'bench_only'] else v_events end,
             case when cardinality(v_equip) = 0 then array['classic', 'equipped'] else v_equip end,
-            v_hold, v_ipf, v_guest_days, now())
+            v_hold, v_ipf, v_guest_days, least(greatest(v_offer_hours, 1), 168), now())
     on conflict (competition_id) do update set events = excluded.events, equipment = excluded.equipment,
-      hold_minutes = excluded.hold_minutes, openipf_mode = excluded.openipf_mode, guest_delay_days = excluded.guest_delay_days, updated_at = now();
+      hold_minutes = excluded.hold_minutes, openipf_mode = excluded.openipf_mode, guest_delay_days = excluded.guest_delay_days,
+      offer_window_hours = excluded.offer_window_hours, updated_at = now();
 
   if v_method = 'yne' then
     delete from public.price_rules where competition_id = c;

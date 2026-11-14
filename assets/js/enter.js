@@ -14,7 +14,7 @@
   var summary = document.getElementById("error-summary"), list = document.getElementById("error-list");
   var lede = document.getElementById("enter-lede"), title = document.getElementById("enter-title");
   var ctx = null;                               // competition, settings, price rules, classes, divisions
-  var step = "about", preview = false, invite = "", countdown = null;
+  var step = "about", preview = false, invite = "", offer = "", offerInfo = null, countdown = null;
   var v = { sex: "", event: "", equipment: "", weight_class_id: "", division_id: "", dd: "", mm: "", yyyy: "" };
   var EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
   var EVENT_NAMES = { full_power: "Full power", bench_only: "Bench only" };
@@ -199,7 +199,7 @@
       opts.help ? el("p", { class: "help", id: id + "-help" }, opts.help) : null,
       el("p", { class: "field-error", id: id + "-error", hidden: true }),
       el("input", { id: id, name: id, type: opts.type || "text", value: v[id] || "", autocomplete: opts.autocomplete || "off", maxlength: opts.max || 200,
-        spellcheck: "false", "aria-describedby": opts.help ? id + "-help" : false, oninput: function (e) { v[id] = e.target.value; } }));
+        spellcheck: "false", readonly: opts.readonly ? "readonly" : false, "aria-describedby": opts.help ? id + "-help" : false, oninput: function (e) { v[id] = e.target.value; } }));
   }
   function check(id, label, help) {
     return el("div", { class: "field", "data-field": id },
@@ -269,7 +269,7 @@
   function stepAbout() {
     return [
       text("full_name", "Full name", { autocomplete: "name", help: "Your name, club and weight class are shown on the entries list and the lifting order." }),
-      text("email", "Email address", { type: "email", autocomplete: "email", max: 254, help: "We send your confirmation here." }),
+      text("email", "Email address", { type: "email", autocomplete: "email", max: 254, readonly: !!offerInfo, help: offerInfo ? "Your place was offered to this address, so it cannot be changed." : "We send your confirmation here." }),
       dobField(),
       el("p", { class: "callout", id: "cat-note", role: "status", hidden: myCategory() === null }, catNote()),
       radios("sex", "Which category are you entering?", [["M", "Men's"], ["F", "Women's"]],
@@ -391,6 +391,7 @@
       weight_class_id: v.weight_class_id, openipf_url: trim(v.openipf_url),
       photo_ok: v.photo_choice === "yes", photo_opt_out: v.photo_choice === "never" };
     if (invite) o.invite = invite;
+    if (offerInfo) o.offer = offer;
     if (v.discount_applied) o.discount_code = v.discount_applied.code;
     var ex = chosenExtras(); if (ex.length) o.extras = ex.map(function (x) { return x.option_id ? { id: x.id, option_id: x.option_id } : { id: x.id }; });
     if (ageOnDay() < 18) { o.guardian_name = trim(v.guardian_name); o.guardian_phone = trim(v.guardian_phone); o.guardian_email = trim(v.guardian_email); o.guardian_consent = !!v.guardian_consent; }
@@ -463,12 +464,56 @@
     if (active) { var a = document.getElementById(active); if (a) a.focus(); }
   }
 
+
+  // ---- the waiting list --------------------------------------------------------------------------------------
+  function functionUrl(name) { return CFG.supabaseUrl.replace(/\/$/, "") + "/functions/v1/" + name; }
+  function callFunction(name, body) {
+    return Y.db().auth.getSession().then(function (s) {
+      var token = s && s.data && s.data.session && s.data.session.access_token, headers = { "Content-Type": "application/json", apikey: CFG.supabaseAnonKey || "" };
+      if (preview && token) { headers.Authorization = "Bearer " + token; body.preview = true; }
+      return fetch(functionUrl(name), { method: "POST", headers: headers, body: JSON.stringify(body) });
+    }).then(function (res) { return res.json().catch(function () { return {}; }).then(function (b) { return { ok: res.ok, b: b }; }); });
+  }
+  // Does the personal link from the offer email still work? Resolves to { ok, name, email, expires_at }.
+  function checkOffer(compId) {
+    if (!offer) return Promise.resolve({ ok: false });
+    return callFunction("waitlist", { action: "offer", competition_id: compId, offer: offer }).then(function (r) { return r.b && r.b.ok ? r.b : { ok: false }; }, function () { return { ok: false }; });
+  }
+  // All places are taken: the waiting list opens by itself. Name and email, then we email when a place comes up.
+  function showWaitlist(comp, settings, note) {
+    title.textContent = comp.name + " is full";
+    lede.textContent = Y.dateRange(comp.start_date, comp.end_date) + (comp.venue_name ? " at " + comp.venue_name : "");
+    status.hidden = !preview; if (preview) status.innerHTML = "<p><strong>Preview.</strong> This competition is not published. You can try the waiting list because you are signed in to the site editor.</p>";
+    var hours = settings.offer_window_hours || 48;
+    var errBox = el("p", { class: "field-error", id: "wl-error", role: "alert", hidden: true });
+    var btn = el("button", { class: "btn btn-primary", type: "submit" }, "Join the waiting list");
+    var form = el("form", { novalidate: true, onsubmit: function (ev) {
+      ev.preventDefault(); errBox.hidden = true;
+      var name = trim(v.full_name), email = trim(v.email);
+      if (!name) { errBox.textContent = "Enter your full name"; errBox.hidden = false; return document.getElementById("full_name").focus(); }
+      if (!EMAIL.test(email)) { errBox.textContent = "Enter your email address in the right format, like name@example.com"; errBox.hidden = false; return document.getElementById("email").focus(); }
+      btn.disabled = true; btn.textContent = "Joining…";
+      callFunction("waitlist", { action: "join", competition_id: comp.id, full_name: name, email: email }).then(function (r) {
+        if (!r.ok) throw new Error(r.b.message || "Sorry, something went wrong. Please try again.");
+        app.replaceChildren(el("div", { class: "success-panel", tabindex: "-1" }, el("div", { class: "tick", "aria-hidden": "true" }, "✓"),
+          el("h2", { style: "margin-top:0" }, r.b.already ? "You are already on the waiting list" : "You are on the waiting list"),
+          el("p", null, "You are number " + r.b.position + " in the queue." + (r.b.already ? "" : " We have emailed you.")),
+          el("p", null, "If a place becomes free we will email you a personal link, and you will have " + hours + " hours to use it. You do not need to do anything now.")));
+      }).catch(function (e) { errBox.textContent = e.message; errBox.hidden = false; btn.disabled = false; btn.textContent = "Join the waiting list"; });
+    } },
+      note ? el("p", { class: "callout" }, note) : null,
+      el("p", null, "All the places have been taken, but places do come up. Join the waiting list and we will email you a personal link if one does. You will then have " + hours + " hours to use it, and after that the place goes to the next person."),
+      text("full_name", "Full name", { autocomplete: "name" }), text("email", "Email address", { type: "email", autocomplete: "email", max: 254, help: "We email you here if a place comes up." }),
+      errBox, el("div", { class: "form-actions" }, btn));
+    app.replaceChildren(form); app.hidden = false;
+  }
+
   // ---- load ------------------------------------------------------------------------------------
   function stop(headline, html) {
     title.textContent = headline; lede.textContent = ""; app.hidden = true; status.hidden = false; status.innerHTML = html;
   }
   function init() {
-    var q = new URLSearchParams(location.search), slug = q.get("c") || ""; invite = q.get("invite") || "";
+    var q = new URLSearchParams(location.search), slug = q.get("c") || ""; invite = q.get("invite") || ""; offer = q.get("offer") || "";
     var db = Y.db();
     if (!db || !slug) return stop("Enter a competition", "<p>Choose a competition from the <a href='calendar.html'>calendar</a> to enter.</p>");
     var cols = "id,name,start_date,end_date,venue_name,slug,entry_url,waitlist_url,entry_opens,entry_closes";
@@ -508,14 +553,21 @@
           if (!(invite && now >= priorityFrom)) return stop("Entries are not open yet", "<p>Entries open on " + when(opensAt) + ".</p>" + (invite ? "<p>Your priority link works from " + when(priorityFrom) + ".</p>" : ""));
           priority = true;
         }
-        if (st.places_left < 1) return stop("This competition is full", "<p>Sorry, all places have gone." + (comp.waitlist_url ? " <a href='" + encodeURI(comp.waitlist_url) + "'>Join the waiting list</a>." : "") + "</p>");
-        if (!(a[5].data || []).length) return stop("Enter " + comp.name, "<p>We could not load the list of federations, so entries cannot be taken just now. Please try again later or <a href='contact.html'>contact the entries team</a>.</p>");
-        ctx = { comp: comp, settings: settings, rules: a[3].data || [], classes: a[4].data || [], divisions: a[5].data || [], clubs: a[7].data || [], extras: (a[8] && a[8].data) || [] };
-        document.getElementById("hold-minutes").textContent = settings.hold_minutes;
-        lede.textContent += ". " + st.places_left + (st.places_left === 1 ? " place" : " places") + " left.";
-        if (priority) { status.hidden = false; status.innerHTML = "<p><strong>Priority entry.</strong> You are using a personal priority link. General entry opens on " + new Date(comp.entry_opens).toLocaleString("en-GB", { timeZone: Y.TZ, dateStyle: "full", timeStyle: "short" }) + ".</p>"; }
-        if (preview) status.hidden = false, status.innerHTML = "<p><strong>Preview.</strong> This competition is not published. You can enter it because you are signed in to the site editor. Use Stripe test cards only.</p>";
-        app.hidden = false; render();
+        var full = st.places_left < 1;
+        return checkOffer(comp.id).then(function (o) {
+          if (o.ok) offerInfo = o;
+          // Full: the waiting list opens by itself (unless this person has a personal link that still works).
+          if (full && !offerInfo) return showWaitlist(comp, settings, offer ? "That personal link has ended: the place was not taken up in time, or the link has already been used. You can join the waiting list again." : "");
+          if (offerInfo) { v.full_name = offerInfo.name; v.email = offerInfo.email; }
+          if (!(a[5].data || []).length) return stop("Enter " + comp.name, "<p>We could not load the list of federations, so entries cannot be taken just now. Please try again later or <a href='contact.html'>contact the entries team</a>.</p>");
+          ctx = { comp: comp, settings: settings, rules: a[3].data || [], classes: a[4].data || [], divisions: a[5].data || [], clubs: a[7].data || [], extras: (a[8] && a[8].data) || [] };
+          document.getElementById("hold-minutes").textContent = settings.hold_minutes;
+          lede.textContent += offerInfo ? ". A place is being held for you." : ". " + st.places_left + (st.places_left === 1 ? " place" : " places") + " left.";
+          if (priority) { status.hidden = false; status.innerHTML = "<p><strong>Priority entry.</strong> You are using a personal priority link. General entry opens on " + new Date(comp.entry_opens).toLocaleString("en-GB", { timeZone: Y.TZ, dateStyle: "full", timeStyle: "short" }) + ".</p>"; }
+          if (offerInfo) { status.hidden = false; status.replaceChildren(el("p", null, el("strong", null, "A place is being held for you"), " until " + whenText(new Date(offerInfo.expires_at)) + ". Complete your entry and payment before then, or it goes to the next person on the waiting list.")); }
+          if (preview) status.hidden = false, status.innerHTML = "<p><strong>Preview.</strong> This competition is not published. You can enter it because you are signed in to the site editor. Use Stripe test cards only.</p>";
+          app.hidden = false; render();
+        });
       });
     }).catch(function (e) { if (window.console) console.error(e); stop("Something went wrong", "<p>We could not load this page. Please try again or <a href='contact.html'>contact us</a>.</p>"); });
   }

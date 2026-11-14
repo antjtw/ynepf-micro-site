@@ -141,6 +141,19 @@ Each competition has a **Money** tab (entries team and admins). Press **Set who 
 
 ---
 
+## Part 5f: The waiting list
+
+When a competition has no places left, the waiting list opens by itself: the entry page and the calendar switch to "Join the waiting list" (name and email). When a place frees up, because of a cancellation, a refund, or a place nobody paid for, the person who has waited longest is emailed a personal link and the place is held for them for 48 hours (you can change this on the competition's Details tab). They get one reminder, and if they do not take it the place passes to the next person. Nothing needs doing by hand: the **Waiting list** tab on each competition shows who is waiting, who has been offered a place and until when, and lets you take someone off the list or withdraw an offer.
+
+To set it up (once):
+1. In Supabase, **Edge Functions > Deploy a new function > Via editor**. Name it `waitlist`, paste in `supabase/functions/waitlist/index.ts`, switch **Verify JWT** **off**, and **Deploy**.
+2. Under **Edge Functions > Secrets**, add one new secret, `CRON_SECRET`, with any long random text (for example, mash the keyboard for 30 characters). Keep a copy.
+3. In **Database > Extensions**, make sure `pg_cron` and `pg_net` are switched on.
+4. Open `docs/entry-system/schedule-waitlist.sql`, replace `YOUR-CRON-SECRET` with the text from step 2, and run it in the SQL editor. It makes the list check itself every 5 minutes.
+5. To test without waiting, press **Check the list now** on the Waiting list tab.
+
+It needs the newest all-in-one SQL.
+
 ## Part 5b: The club list
 
 Lifters in English divisions can choose their club (it is optional) from the English Powerlifting Association's list of approved clubs, copied from the EPA website. Only club **names** are copied, never contact details. Lifters from other nations have no club question, and clubs from other bodies are not included.

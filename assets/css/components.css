@@ -94,6 +94,10 @@
 .on-dark .btn-ghost { --btn-fg: #fff; --btn-fill: color-mix(in srgb, #fff 16%, transparent); --btn-fg-hover: #fff; }
 
 .btn-danger { --btn-bg: transparent; --btn-fg: var(--error-text); --btn-border: transparent; --btn-fill: var(--rose-100); --btn-fg-hover: var(--rose-800); }
+/* The one solid red button, for deleting something for good. */
+.btn-danger-solid { --btn-bg: var(--rose-800); --btn-fg: #fff; --btn-border: var(--rose-800); --btn-fill: #5c2626; --btn-fg-hover: #fff; }
+.danger-zone { margin-top: var(--space-8, 3rem); padding-top: var(--space-5); border-top: 1px solid var(--border-subtle, #d9dee6); }
+.danger-zone h2 { color: var(--error-text); }
 .btn[disabled], .btn[aria-disabled="true"] {
   --btn-bg: var(--grey-100); --btn-fg: var(--grey-700); --btn-border: var(--grey-100); --btn-fill: var(--grey-100); --btn-fg-hover: var(--grey-700);
   cursor: not-allowed; transform: none; opacity: 0.8;

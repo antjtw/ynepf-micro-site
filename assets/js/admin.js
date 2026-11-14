@@ -65,7 +65,7 @@
       }
     });
 
-    var save = el("button", { class: "btn btn-primary", type: "submit" }, opt.saveLabel || "Save");
+    var save = el("button", { class: "btn " + (opt.danger ? "btn-danger-solid" : "btn-primary"), type: "submit" }, opt.saveLabel || "Save");
     form.appendChild(el("div", { class: "dialog-actions" }, save,
       el("button", { class: "btn btn-secondary", type: "button", onclick: function () { dlg.close(); } }, "Cancel")));
 
@@ -107,7 +107,7 @@
     });
     dlg.showModal();
     // Rich editors need to be laid out before they are created.
-    editors.pending.forEach(function (fn) { fn(); });
+    (editors.pending || []).forEach(function (fn) { fn(); });
     var first = form.querySelector("input:not([type=checkbox]), textarea, select");
     if (first) first.focus();
     return api;
@@ -393,8 +393,7 @@
       el("thead", null, el("tr", null, ["Name", "Date", "Entry", "Actions"].map(function (h) { return el("th", { scope: "col" }, h); }))),
       el("tbody", null, rows.map(function (c) {
         var st = Y.compState(c), online = c.entry_method === "yne";
-        var actions = el("span", { class: "actions" }, el("a", { class: "btn btn-secondary btn-sm", href: "#competitions/" + c.id }, "Edit", el("span", { class: "visually-hidden" }, " " + c.name)));
-        if (canComp()) actions.appendChild(btn("Delete", function () { removeCompetition(c); }, "btn-danger"));
+        var actions = el("span", { class: "actions" }, el("a", { class: "btn btn-ghost btn-sm", href: "#competitions/" + c.id }, "Edit", el("span", { class: "visually-hidden" }, " " + c.name)));
         return el("tr", null,
           el("th", { scope: "row" }, el("a", { href: "#competitions/" + c.id }, c.name), c.kind === "event" ? [" ", el("span", { class: "tag tag-event" }, "Event")] : null, !c.published ? [" ", el("span", { class: "tag tag-position" }, "Draft")] : null,
             c.venue_name ? el("small", null, c.venue_name) : null),
@@ -406,11 +405,47 @@
       }))));
   }
 
+  // Deleting a competition lives at the bottom of its Details page. One that has entries (or money sent to a host) cannot be
+  // deleted: entries and payments are financial records. It can be hidden from the website instead.
+  function hideInstead(c, why) {
+    openForm({
+      title: "“" + c.name + "” cannot be deleted", saveLabel: "Hide it from the website", fields: [],
+      intro: why + " Entries and payments are records we need to keep, so this competition stays. You can hide it from the website instead: it keeps everything, but it disappears from the calendar and its entry page closes.",
+      onSave: function () {
+        return sb.from("competitions").update({ published: false }).eq("id", c.id).then(ok).then(function () { c.published = false; toast("Hidden from the website."); route(); });
+      }
+    });
+  }
   function removeCompetition(c) {
-    if (!window.confirm("Delete “" + c.name + "”? This cannot be undone.")) return;
-    sb.from("competitions").delete().eq("id", c.id).then(ok)
-      .then(function () { toast(c.kind === "event" ? "Event deleted." : "Competition deleted."); if (/#competitions\//.test(location.hash)) go("#competitions"); else route(); })
-      .catch(function (e) { toast(friendly(e), "error"); });
+    var counts = canEntry() ? sb.from("entries").select("id,status").eq("competition_id", c.id).then(function (r) { return r.error ? null : r.data || []; }, function () { return null; }) : Promise.resolve(null);
+    counts.then(function (rows) {
+      if (rows && rows.length) {
+        var live = rows.filter(function (e) { return e.status === "paid" || e.status === "comped" || e.status === "held"; }).length;
+        return hideInstead(c, "It has " + rows.length + (rows.length === 1 ? " entry" : " entries") + (live ? " (" + live + " still entered or paying)" : " (all cancelled or refunded)") + ".");
+      }
+      var what = c.kind === "event" ? "event" : "competition";
+      openForm({
+        title: "Delete “" + c.name + "”?", saveLabel: "Delete this " + what, danger: true, fields: [],
+        intro: "This cannot be undone." + (c.kind === "event" ? "" : " It deletes the " + what + " and everything set up for it: its entry settings and prices, extras, discount codes and waiting list. It has no entries, so no entrant is affected."),
+        onSave: function () {
+          return sb.from("competitions").delete().eq("id", c.id).then(function (r) {
+            if (r.error) {
+              if (r.error.code === "23503" || /foreign key|violates/i.test(r.error.message || "")) { throw new Error("This " + what + " has entries or payments recorded against it, so it cannot be deleted. Hide it from the website instead (untick “Show on the website”)."); }
+              throw r.error;
+            }
+            toast(c.kind === "event" ? "Event deleted." : "Competition deleted."); go("#competitions");
+          });
+        }
+      });
+    });
+  }
+  // The red zone at the foot of a competition's Details page.
+  function deleteZone(c) {
+    var what = c.kind === "event" ? "event" : "competition";
+    return el("section", { class: "danger-zone", "aria-labelledby": "dz-title" },
+      el("h2", { id: "dz-title" }, "Delete this " + what),
+      el("p", null, c.kind === "event" ? "Deleting cannot be undone." : "Deleting cannot be undone. A competition that has entries cannot be deleted, because entries and payments are records we keep: you can hide it from the website instead."),
+      el("button", { class: "btn btn-danger-solid", type: "button", onclick: function () { removeCompetition(c); } }, "Delete this " + what));
   }
 
   // A form drawn straight onto the page from a list of fields. Fields may have a `heading` (a section), `show(values)`
@@ -466,7 +501,7 @@
     var role = state.role;
     var online = c.entry_method === "yne";
     var title = isNew ? (isEvent ? "Add another event" : "Add competition") : c.name;
-    var head = panelHead(title, !isNew && canComp() ? btn("Delete", function () { removeCompetition(c); }, "btn-danger") : null);
+    var head = panelHead(title);
     var view = el("div");
     panel.replaceChildren(backLink(), head);
     if (!isNew && !isEvent) {
@@ -599,6 +634,7 @@
       else if (!canEntry()) note = "You can change the competition details. The online entry settings (how entries are taken, prices) are looked after by the entries team.";
       var formEl = el("form", { novalidate: true }, note ? el("p", { class: "callout" }, note) : null, form.el, bar.el);
       view.replaceChildren(formEl);
+      if (!isNew && canComp()) view.appendChild(deleteZone(c));
 
       // New competition: suggest the web address from the year and name.
       if (isNew) {
@@ -691,6 +727,7 @@
     var bar = saveBar(null, isNew ? "Add event" : "Save changes");
     var formEl = el("form", { novalidate: true }, form.el, bar.el);
     view.replaceChildren(formEl);
+    if (!isNew && canComp()) view.appendChild(deleteZone(c));
     formEl.addEventListener("submit", function (e) {
       e.preventDefault(); bar.clear();
       var v = form.values(), problem = null;

@@ -586,9 +586,8 @@
         E({ name: "offer_window_hours", label: "Hours an offered place is held for the waiting list", type: "number", min: "1", show: isOnline, help: "When the competition is full, the waiting list opens by itself. When a place frees up, the person who has waited longest is emailed a personal link and has this long to use it (up to 168 hours). Then it passes to the next person." }),
         E({ name: "guest_delay_days", label: "Guests can enter this many days after entry opens", type: "number", min: "0", show: isOnline, help: "A guest is anyone outside the Yorkshire & North East division. Usually 14 (two weeks). They are told the date on the entry form." }),
         { heading: "Full, closed and waiting list" },
-        C({ name: "entries_full", label: "Entries full", type: "checkbox", help: "Tick when the competition fills up. The main button becomes “Join the waiting list” (if you add a link below)." }),
+        C({ name: "entries_full", label: "Entries full", type: "checkbox", show: function (v) { return v.method !== "online"; }, help: "Tick when a competition that is entered somewhere else fills up. Online entry marks itself full when the places run out, and the waiting list opens by itself." }),
         E({ name: "entries_closed_manually", label: "Close entries now", type: "checkbox", show: isOnline, help: "Stops new online entries straight away. Untick to reopen." }),
-        C({ name: "waitlist_url", label: "Waiting list link (Google Form)", type: "url", placeholder: "https://forms.gle/…", help: "Only shown on the website while entries are marked full." }),
         { heading: "Lifting order and results" },
         C({ name: "lifting_order_url", label: "Lifting order sheet (optional)", type: "url", placeholder: "https://docs.google.com/spreadsheets/d/e/…/pub?output=csv",
           help: "Add it a few days after entries open: a “View lifting order” button appears once it is here, and the page follows the sheet as you edit it. Use a published Google Sheet (File > Share > Publish to web > CSV), one row per lifter. Needs columns Day, Session, Flight and Name. Optional: Club, Instagram, Age class (blank = Open, otherwise J, SJ, M1, M2, M3 or M4), Class (for example M66), GLP, Total, Open IPF, and per session Weigh-in, Lift off and Session name. Only columns with something in them are shown." }),
@@ -657,7 +656,6 @@
           else if (v.entry_url && !/^https?:\/\//i.test(v.entry_url)) problem = "The entry link must start with https://";
           else if (v.map_url && !/^https?:\/\//i.test(v.map_url)) problem = "The map link must start with https://";
           else if (v.openipf_url && !/^https:\/\//i.test(v.openipf_url)) problem = "The OpenIPF link must start with https://";
-          else if (v.waitlist_url && !/^https:\/\//i.test(v.waitlist_url)) problem = "The waiting list link must start with https://";
           else if (v.lifting_order_url && !Y.sheetCsvUrl(v.lifting_order_url)) problem = "The lifting order link does not look usable. It must start with https://";
           else if (!v.name) problem = "Name is required.";
           else if (!v.start_date) problem = "The first day is required.";
@@ -669,7 +667,7 @@
           venue_name: v.venue_name, venue_address: v.venue_address, map_url: v.map_url, openipf_url: v.openipf_url,
           capacity: v.capacity, entry_url: v.method === "link" ? v.entry_url : "",
           entry_opens: opens ? Y.fromLondonInput(opens) : null, entry_closes: closes ? Y.fromLondonInput(closes) : null,
-          entries_full: v.entries_full, waitlist_url: v.waitlist_url, lifting_order_url: v.lifting_order_url, published: v.published
+          entries_full: v.entries_full, lifting_order_url: v.lifting_order_url, published: v.published
         };
         var step = Promise.resolve(c.id);
         if (canComp()) {

@@ -796,8 +796,7 @@ select
     else ''
   end as entry_url,
   k.entry_method,
-  case when k.entry_method = 'yne' and k.auto_full and k.slug <> '' then '/enter?c=' || k.slug
-       when k.entries_full then k.waitlist_url else '' end as waitlist_url,
+  case when k.entry_method = 'yne' and k.auto_full and k.slug <> '' then '/enter?c=' || k.slug else '' end as waitlist_url,
   k.lifting_order_url,
   k.openipf_url,
   k.slug

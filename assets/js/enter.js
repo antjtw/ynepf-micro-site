@@ -534,7 +534,7 @@
         db.from("price_rules").select("*").eq("competition_id", comp.id).order("sort_order"),
         db.from("weight_classes").select("*").eq("active", true).order("sort_order"),
         db.from("divisions").select("*").order("sort_order"),
-        db.rpc("places_left", { c: comp.id }),
+        db.rpc("places_open", { c: comp.id }),
         db.from("clubs").select("name,region").eq("active", true).order("name"),
         db.from("addons").select("id,kind,name,description,price_pence,stock,sort_order,addon_options(id,label,sort_order)").eq("competition_id", comp.id).order("sort_order").order("name")
       ]).then(function (a) {

@@ -434,6 +434,7 @@ as $$
 $$;
 grant execute on function public.places_left(uuid) to anon, authenticated;
 
+
 -- ---------------------------------------------------------------------------
 -- 7. Waiting list, offers and priority links
 -- ---------------------------------------------------------------------------
@@ -482,6 +483,15 @@ as $$
              and not exists (select 1 from public.entries e where e.waiting_id = w.id
                                and (e.status in ('paid', 'comped') or (e.status = 'held' and e.hold_expires_at > now()))))
 $$;
+
+-- The places the PUBLIC can take: free places less the people already waiting. A place that frees up belongs to the head of
+-- the waiting list (who is offered it within minutes), so it is not on sale to anyone else in the meantime.
+create or replace function public.places_open(c uuid) returns integer
+language sql stable security definer set search_path = public
+as $$
+  select greatest(public.places_left(c) - (select count(*)::int from public.waiting_list where competition_id = c and status = 'waiting'), 0)
+$$;
+grant execute on function public.places_open(uuid) to anon, authenticated;
 
 alter table public.invites add column if not exists entry_id uuid references public.entries (id) on delete set null;
 
@@ -802,7 +812,7 @@ select
   k.slug
 from (
   select c.*, (c.entry_method = 'yne' and not c.entries_closed_manually and (c.entry_opens is null or c.entry_opens <= now())
-               and (c.entry_closes is null or c.entry_closes > now()) and public.places_left(c.id) < 1) as auto_full
+               and (c.entry_closes is null or c.entry_closes > now()) and public.places_open(c.id) < 1) as auto_full
     from public.competitions c where c.published
 ) k;
 grant select on public.competitions_public to anon, authenticated;
@@ -810,7 +820,7 @@ grant select on public.competitions_public to anon, authenticated;
 -- The state of entry for a competition card or page.
 drop view if exists public.competition_entry_state;
 create view public.competition_entry_state as
-select c.id as competition_id, c.capacity, public.places_left(c.id) as places_left,
+select c.id as competition_id, c.capacity, public.places_open(c.id) as places_left,
        c.entry_method, c.entries_closed_manually, c.entry_opens, c.entry_closes
 from public.competitions c
 left join public.entry_settings es on es.competition_id = c.id
@@ -1011,7 +1021,7 @@ begin
       where w.competition_id = c.id and w.email = v_email and o.outcome is null and o.expires_at > now()
         and o.token_hash = encode(sha256(convert_to(btrim(p->>'offer'), 'UTF8')), 'hex');
   end if;
-  if v_offer is null and public.places_left(c.id) < 1 then raise exception 'full'; end if;
+  if v_offer is null and public.places_open(c.id) < 1 then raise exception 'full'; end if;
 
   -- Price: first matching rule wins.
   v_cat := public.age_category_on(v_dob, c.start_date);
@@ -1111,7 +1121,7 @@ begin
   if v_name = '' or char_length(v_name) > 120 then raise exception 'invalid:full_name'; end if;
   if v_email !~ '^[^@\s]+@[^@\s]+\.[^@\s]+$' or char_length(v_email) > 200 then raise exception 'invalid:email'; end if;
   if exists (select 1 from public.entries where competition_id = c.id and email = v_email and status in ('paid', 'comped')) then raise exception 'already_entered'; end if;
-  if public.places_left(c.id) > 0 then raise exception 'not_full'; end if;
+  if public.places_open(c.id) > 0 then raise exception 'not_full'; end if;
   select * into w from public.waiting_list where competition_id = c.id and email = v_email;
   if found then
     if w.status in ('waiting', 'offered') then

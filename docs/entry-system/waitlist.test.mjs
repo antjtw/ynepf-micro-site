@@ -123,6 +123,30 @@ await db.exec(`update public.competitions set entry_closes = null where id = '${
 await db.exec(`update public.competitions set capacity = 3 where id = '${W}'`);
 ok((await cands()).length === 2, "adding places means more people are offered (the two still waiting)");
 
+// ---- a place that frees up belongs to the queue: the public cannot grab it before the timer makes the offer
+await db.exec("reset role");
+const Q = "44444444-4444-4444-4444-444444444444";
+await db.exec(`insert into public.competitions (id,name,start_date,capacity,published,slug,entry_method) values ('${Q}','Queue Open','2027-03-13',1,true,'queue-open','yne');
+ insert into public.entry_settings (competition_id) values ('${Q}');
+ insert into public.price_rules (competition_id,sort_order,label,event,age_category,price_pence) values ('${Q}',1,'Full power','full_power',null,6000);`);
+const qstart = async (o) => { try { return (await q(`select public.start_entry($1::jsonb) r`, [JSON.stringify({ ...good, competition_id: Q, ...o })]))[0].r; } catch (e) { return { error: e.message }; } };
+const qleft = async (fn) => (await q(`select public.${fn}('${Q}') n`))[0].n;
+const qview = async () => (await q(`select entries_full f, entry_url u, waitlist_url w from public.competitions_public where id='${Q}'`))[0];
+const e1 = await qstart({ email: "holder@x.com" }); await db.exec(`update public.entries set status='paid', paid_at=now() where id='${e1.entry_id}'`);
+await call("waitlist_join", [JSON.stringify({ competition_id: Q, email: "next@x.com", full_name: "Next" })]);
+await db.exec(`update public.entries set status = 'cancelled' where id = '${e1.entry_id}'`);
+ok((await qleft("places_left")) === 1 && (await qleft("places_open")) === 0, "a place frees up, but it is not open to the public while someone is waiting for it");
+const qv = await qview(); ok(qv.f === true && qv.u === "" && qv.w === "/enter?c=queue-open", "so the calendar still says full and offers the waiting list, not Enter now: " + JSON.stringify(qv));
+ok((await qstart({ email: "stranger@x.com" })).error === "full", "and a stranger cannot take it in the gap before the offer goes out");
+j = await call("waitlist_join", [JSON.stringify({ competition_id: Q, email: "newer@x.com", full_name: "Newer" })]);
+ok(j.position === 2, "someone arriving now joins the back of the queue (not told to just enter): " + JSON.stringify(j));
+// the queue is served, then empties: Enter now comes back by itself
+const qc = (await q(`select public.waitlist_candidates('${Q}') r`))[0].r; ok(qc.length === 1 && qc[0].email === "next@x.com", "the timer offers it to the head of the queue");
+await db.exec(`update public.waiting_list set status = 'removed' where competition_id = '${Q}'`);
+ok((await qleft("places_open")) === 1, "once nobody is waiting, the free place is open again");
+const qv2 = await qview(); ok(qv2.f === false && qv2.u === "/enter?c=queue-open", "and Enter now comes back on the calendar by itself: " + JSON.stringify(qv2));
+ok((await qstart({ email: "anyone@x.com" })).entry_id, "anyone can take it");
+
 // who may do what
 await db.exec("set role anon");
 ok(!(await can(`select public.waitlist_join('{}'::jsonb)`)) && !(await can(`select public.waitlist_sweep('${W}')`)) && !(await can(`select public.waitlist_make_offer('${W}'::uuid, 'x')`)), "the public cannot call the waiting list functions (only our server can)");

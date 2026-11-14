@@ -874,9 +874,9 @@
       view.replaceChildren(
         el("div", { class: "actions", style: "margin-bottom:var(--space-3)" },
           btn("Add entry", function () { addEntry(c, refs, reload); }, "btn-primary"),
-          btn("Download CSV", function () { downloadEntries(c); }, "btn-secondary"),
           c.entry_method === "yne" ? btn("Priority entry", function () { editPriority(c); }, "btn-secondary") : null,
-          c.slug ? el("a", { class: "btn btn-sm btn-secondary", href: "../entries?c=" + encodeURIComponent(c.slug), target: "_blank", rel: "noopener" }, "Public list") : null),
+          c.slug ? el("a", { class: "btn btn-sm btn-secondary", href: "../entries?c=" + encodeURIComponent(c.slug), target: "_blank", rel: "noopener" }, "Public list") : null,
+          btn("Download CSV", function () { downloadEntries(c); }, "btn-ghost")),
         el("p", { class: "panel-intro" }, live.length + " entered of " + (c.capacity || "?") + " places. Entry money taken: " + entryMoney(total) + "." +
           (toCheck ? " " + toCheck + (toCheck === 1 ? " guest" : " guests") + " to check." : "") + (Object.keys(dup).length ? " " + Object.keys(dup).length + " entries share an email or membership number with another." : "")),
         el("div", { class: "control-row" }, q, st, so), el("div", { class: "control-row checks" }, g, dp), count, list);

@@ -78,6 +78,9 @@ assert(es.validEntry("123e4567-e89b-12d3-a456-426614174000") && !es.validEntry("
   assert(o.includes("https://x/enter?c=a&offer=b") && /Saturday,? 2 January 2027 at 12:00/.test(o), "offer email has the link and the deadline in UK time: " + o);
   assert(wl.reminderEmail({ ...who, expiresAt: "2027-07-02T12:00:00Z", slug: "a", siteUrl: "https://x" }).includes("2 July 2027 at 13:00"), "summer deadlines are shown in British Summer Time");
   assert(wl.expiredEmail({ ...who, slug: "a", siteUrl: "https://x/" }).includes("https://x/enter?c=a"), "expired email says how to rejoin");
+  const pe = wl.priorityEmail({ ...who, link: "https://x/enter?c=a&invite=tok", windowStart: "2027-03-19T09:00:00Z", opens: "2027-03-20T09:00:00Z" });
+  assert(pe.includes("https://x/enter?c=a&invite=tok") && /19 March 2027 at 09:00/.test(pe) && /20 March 2027 at 09:00/.test(pe) && pe.includes("Hi Ann,") && pe.includes("only works once"), "priority email: link, when it starts, when general entry opens: " + pe);
+  assert(wl.priorityEmail({ ...who, name: "", link: "l", windowStart: "2027-03-19T09:00:00Z" }).includes("Hi there,"), "no name: Hi there");
   assert.strictEqual(wl.errorCode("ERROR: not_full\nCONTEXT"), "not_full"); assert.strictEqual(wl.errorCode("boom"), "unknown");
   let n = 0; for (let i = 0; i < 10; i++) if (wl.allowTry("k", 1000)) n++; assert.strictEqual(n, 6, "joining is rate limited");
 }

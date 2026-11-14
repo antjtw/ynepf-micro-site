@@ -147,6 +147,40 @@ ok((await qleft("places_open")) === 1, "once nobody is waiting, the free place i
 const qv2 = await qview(); ok(qv2.f === false && qv2.u === "/enter?c=queue-open", "and Enter now comes back on the calendar by itself: " + JSON.stringify(qv2));
 ok((await qstart({ email: "anyone@x.com" })).entry_id, "anyone can take it");
 
+// ---- priority entry: a list per competition; links are made and sent when the window opens ----
+await db.exec("reset role");
+const PR = "55555555-5555-5555-5555-555555555555";
+await db.exec(`insert into public.competitions (id,name,start_date,capacity,published,slug,entry_method,entry_opens) values ('${PR}','Priority Open','2027-06-12',10,true,'priority-open','yne', now() + interval '3 days');
+ insert into public.entry_settings (competition_id) values ('${PR}');
+ insert into public.price_rules (competition_id,sort_order,label,event,age_category,price_pence) values ('${PR}',1,'Full power','full_power',null,6000);`);
+const pstart = async (o) => { try { return (await q(`select public.start_entry($1::jsonb) r`, [JSON.stringify({ ...good, competition_id: PR, ...o })]))[0].r; } catch (e) { return { error: e.message }; } };
+const asUser = async (who, fn) => { await db.exec("reset role"); await db.query(`select set_config('request.uid','${who}',false)`); await db.exec("set role authenticated"); try { return await fn(); } finally { await db.exec("reset role"); } };
+const add = (people, who = U.entries) => asUser(who, () => call("priority_add", [PR, JSON.stringify(people)]));
+ok((await add([{ email: "vol@x.com", name: "Vol One" }], U.editor)).error?.includes("forbidden"), "only the entries team can build a priority list");
+ok((await add([{ email: "not-an-email" }])).error?.includes("invalid:email"), "a bad email is refused, and says which");
+ok((await add([{ email: "Vol@X.com", name: "Vol One" }, { email: "vol2@x.com", name: "" }, { email: "vol@x.com", name: "Vol One again" }])) === 2, "people are added without any link yet (a repeat replaces)");
+const inv = async () => q(`select email, full_name, token_hash is null as pending, sent_at is not null as sent from public.invites where competition_id = '${PR}' order by email`);
+let rowsP = await inv(); ok(rowsP.length === 2 && rowsP.every((r) => r.pending && !r.sent) && rowsP.find((r) => r.email === "vol@x.com").full_name === "Vol One again", "they wait, with no link made: " + JSON.stringify(rowsP));
+ok((await q(`select public.priority_competitions() r`))[0].r.length === 0, "entry opens in 3 days, priority starts 24 hours before: nothing is due yet");
+await db.exec(`update public.entry_settings set priority_hours = 96 where competition_id = '${PR}'`);
+ok((await q(`select public.priority_competitions() r`))[0].r.includes(PR), "set the window to 96 hours and the links are due now");
+const pend = (await q(`select public.priority_pending('${PR}') r`))[0].r; ok(pend.length === 2, "the timer would send to both");
+const ptok = "priority-token-1234567890";
+await call("priority_issue", [pend[0].id, await hash(ptok), false]);
+ok((await q(`select public.priority_pending('${PR}') r`))[0].r.length === 1, "once issued, a person is no longer waiting");
+ok((await call("priority_issue", [pend[0].id, await hash("x"), false])).error?.includes("not_waiting"), "a link is not made twice by accident");
+ok((await pstart({ email: pend[0].email, invite: ptok })).entry_id, "with the link, they can enter before general entry opens (here 3 days early, inside the 96 hour window)");
+ok((await pstart({ email: "someone@else.com", invite: ptok })).error === "not_open", "someone else cannot use that person's link");
+await db.exec(`update public.entry_settings set priority_hours = 24 where competition_id = '${PR}'`);
+await db.exec(`update public.entries set status = 'cancelled' where competition_id = '${PR}'`);
+ok((await pstart({ email: pend[0].email, invite: ptok })).error === "not_open", "outside the window the link does not work yet");
+await db.exec(`update public.entry_settings set priority_hours = 96 where competition_id = '${PR}'`);
+await call("priority_issue", [pend[0].id, await hash("new-token-abcdef"), true]);
+ok((await pstart({ email: pend[0].email, invite: ptok })).error === "not_open", "re-sending replaces the old link");
+ok((await pstart({ email: pend[0].email, invite: "new-token-abcdef" })).entry_id, "and the new one works");
+await call("priority_unissue", [pend[1].id]);
+rowsP = await inv(); ok(rowsP.find((r) => r.email === pend[1].email).pending, "an email that failed to send goes back to waiting, to be tried again");
+
 // who may do what
 await db.exec("set role anon");
 ok(!(await can(`select public.waitlist_join('{}'::jsonb)`)) && !(await can(`select public.waitlist_sweep('${W}')`)) && !(await can(`select public.waitlist_make_offer('${W}'::uuid, 'x')`)), "the public cannot call the waiting list functions (only our server can)");

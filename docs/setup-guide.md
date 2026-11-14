@@ -127,7 +127,7 @@ Stripe keeps its processing fee on a refund, so the federation bears that cost (
 
 ## Part 5d: Discount codes
 
-Codes are made in the editor: open a competition, then the **Discounts** tab, then **Make a discount code**. Nothing else needs setting up in Stripe. Update these two functions so codes work on the entry form: **`entry-checkout`** (it now checks codes, and confirms a free entry itself and emails the lifter) and **`entry-status`** (it now also recognises a free entry). Run the newest all-in-one SQL first.
+Codes are made in the editor: open a competition, then the **Codes and links** tab, then **Make a discount code**. Each code has **Copy** and **Delete**. Delete removes a code nobody has used; a code that has been used (even by a cancelled entry) is switched off instead and kept, so its entries keep their record. Nothing else needs setting up in Stripe. Update these two functions so codes work on the entry form: **`entry-checkout`** (it now checks codes, and confirms a free entry itself and emails the lifter) and **`entry-status`** (it now also recognises a free entry). Run the newest all-in-one SQL first.
 
 ---
 
@@ -157,6 +157,16 @@ To set it up (once):
 5. To test without waiting, press **Check the list now** on the Waiting list tab.
 
 It needs the newest all-in-one SQL.
+
+## Part 5g: Priority entry
+
+On a competition's **Codes and links** tab, **Priority entry** is a list of people who can enter before everyone else. Press **Add people** and paste the list once, one person per line: an email address, with a name before it if you like (for example `Sam Smith, sam@example.com`). Pasting two columns from a spreadsheet works too. You can do this weeks ahead and add people again later.
+
+Nothing is sent when you add them. When the priority window opens (24 hours before general entry opens, and you can change the number of hours on the Details tab), the site emails each person their own personal link automatically, using the same 5-minute timer as the waiting list. Each person's row shows whether their link is waiting, sent, or used. **Send now** emails one person at once, **Send again** gives someone a fresh link (the old one stops working), and **Send to everyone waiting now** does the lot early if you want to.
+
+A link only works with the email address it was sent to, and only once. People on the list who miss the window can still enter when general entry opens.
+
+This needs the newest all-in-one SQL, and the updated `waitlist` function pasted over the old one in Supabase (it now sends the priority emails too). The timer from Part 5f is the same one: nothing new to set up.
 
 ## Part 5b: The club list
 

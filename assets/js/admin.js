@@ -302,7 +302,7 @@
   var STATE_LABEL = { archived: "Past", open: "Entry open", closed: "Entry closed", full: "Entries full", soon: "Entry not open yet", none: "No entry set" };
   var ENTRY_ERRORS = {
     "invalid:events": "Choose at least one event.", "invalid:equipment": "Choose at least one kind of equipment.",
-    "invalid:hold_minutes": "The hold must be between 5 and 30 minutes.", "invalid:offer_window_hours": "A waiting list offer must last between 1 and 168 hours.", "invalid:guest_delay_days": "Guest entry delay must be between 0 and 90 days.",
+    "invalid:hold_minutes": "The hold must be between 5 and 30 minutes.", "invalid:offer_window_hours": "A waiting list offer must last between 1 and 168 hours.", "invalid:priority_hours": "Priority entry must start between 1 and 336 hours before general entry.", "invalid:guest_delay_days": "Guest entry delay must be between 0 and 90 days.",
     "invalid:price_full_power": "Set a full power price of more than £0.", "invalid:price_bench_only": "Set a bench only price of more than £0.",
     "invalid:price_sub_junior": "The sub-junior price must be more than £0, or left empty.", "invalid:capacity": "Set the number of spaces first.",
     forbidden: "You do not have permission to change entry settings."
@@ -585,6 +585,7 @@
         E({ name: "is_franchise", label: "This is a franchise competition (run by a host)", type: "checkbox", show: isOnline, help: "Tick it when a host runs the competition: they receive the entry fee less the federation's fixed amount for each entry. Leave it unticked for a competition the federation runs itself: the federation keeps the whole entry fee." }),
         E({ name: "openipf_required", label: "Entry needs a qualifying total (the OpenIPF link becomes mandatory)", type: "checkbox", show: isOnline }),
         E({ name: "hold_minutes", label: "Minutes a place is held while paying", type: "number", min: "5", show: isOnline, help: "Between 5 and 30. A short hold stops places being parked." }),
+        E({ name: "priority_hours", label: "Priority entry starts this many hours before general entry", type: "number", min: "1", show: isOnline, help: "People on the Codes and links priority list are emailed their personal link when this window opens, and can enter from then until general entry opens. 24 is one day." }),
         E({ name: "offer_window_hours", label: "Hours an offered place is held for the waiting list", type: "number", min: "1", show: isOnline, help: "When the competition is full, the waiting list opens by itself. When a place frees up, the person who has waited longest is emailed a personal link and has this long to use it (up to 168 hours). Then it passes to the next person." }),
         E({ name: "guest_delay_days", label: "Guests can enter this many days after entry opens", type: "number", min: "0", show: isOnline, help: "A guest is anyone outside the Yorkshire & North East division. Usually 14 (two weeks). They are told the date on the entry form." }),
         { heading: "Full, closed and waiting list" },
@@ -617,7 +618,7 @@
         eq_classic: equip.indexOf("classic") >= 0, eq_equipped: equip.indexOf("equipped") >= 0,
         p_full: price(function (r) { return r.event === "full_power" && !r.age_category; }), p_bench: price(function (r) { return r.event === "bench_only" && !r.age_category; }),
         p_sj: price(function (r) { return r.age_category === "SJ"; }),
-        openipf_required: settings.openipf_mode === "required", hold_minutes: settings.hold_minutes || 5, offer_window_hours: settings.offer_window_hours || 48, guest_delay_days: settings.guest_delay_days === undefined || settings.guest_delay_days === null ? 14 : settings.guest_delay_days,
+        openipf_required: settings.openipf_mode === "required", hold_minutes: settings.hold_minutes || 5, offer_window_hours: settings.offer_window_hours || 48, priority_hours: settings.priority_hours || 24, guest_delay_days: settings.guest_delay_days === undefined || settings.guest_delay_days === null ? 14 : settings.guest_delay_days,
         entries_closed_manually: !!c.entries_closed_manually, is_franchise: isNew ? true : c.is_franchise !== false
       });
       var F = fields();
@@ -677,7 +678,7 @@
         step.then(function (id) {
           if (!canEntry()) return id;
           var p = {
-            entry_method: v.method === "online" ? "yne" : "external", hold_minutes: v.hold_minutes || 5, guest_delay_days: v.guest_delay_days === null ? 14 : v.guest_delay_days, offer_window_hours: v.offer_window_hours || 48, entries_closed_manually: !!v.entries_closed_manually, is_franchise: !!v.is_franchise,
+            entry_method: v.method === "online" ? "yne" : "external", hold_minutes: v.hold_minutes || 5, guest_delay_days: v.guest_delay_days === null ? 14 : v.guest_delay_days, offer_window_hours: v.offer_window_hours || 48, priority_hours: v.priority_hours || 24, entries_closed_manually: !!v.entries_closed_manually, is_franchise: !!v.is_franchise,
             openipf_required: !!v.openipf_required,
             events: [v.ev_full && "full_power", v.ev_bench && "bench_only"].filter(Boolean), equipment: [v.eq_classic && "classic", v.eq_equipped && "equipped"].filter(Boolean),
             prices: { full_power: pence(v.p_full), bench_only: pence(v.p_bench), sub_junior: pence(v.p_sj) }
@@ -1184,6 +1185,7 @@
       var ids = codes.map(function (d) { return d.id; });
       return (ids.length ? sb.from("entries").select("discount_code_id,status,hold_expires_at").in("discount_code_id", ids).then(function (r) { return r.error ? [] : r.data || []; }) : Promise.resolve([])).then(function (used) {
         var now = new Date();
+        function everUsed(d) { return used.some(function (e) { return e.discount_code_id === d.id; }); }      // any entry at all, even a cancelled one, remembers the code
         function uses(d) { return used.filter(function (e) { return e.discount_code_id === d.id && (e.status === "paid" || e.status === "comped" || (e.status === "held" && new Date(e.hold_expires_at) > now)); }).length; }
         function state(d) {
           if (!d.active) return ["Switched off", "tag tag-full"];
@@ -1207,8 +1209,12 @@
                 el("td", null, el("span", { class: st[1] }, st[0])),
                 el("td", null, el("span", { class: "actions" },
                   btn("Copy", function () { copyText(d.code); }),
-                  btn(d.active ? "Switch off" : "Switch on", function () { sb.from("discount_codes").update({ active: !d.active }).eq("id", d.id).then(ok).then(function () { renderDiscountsTab(view, c); }).catch(function (er) { toast(friendly(er), "error"); }); }),
-                  n === 0 ? btn("Delete", function () { if (!window.confirm("Delete the code " + d.code + "?")) return; sb.from("discount_codes").delete().eq("id", d.id).then(ok).then(function () { renderDiscountsTab(view, c); }).catch(function (er) { toast(friendly(er), "error"); }); }, "btn-danger") : null)));
+                  everUsed(d) && !d.active ? null : btn("Delete", function () {
+                    var kept = everUsed(d);
+                    if (!window.confirm(kept ? "The code " + d.code + " has been used, so it cannot be deleted: its entries keep a record of it. It will be switched off, so nobody can use it again." : "Delete the code " + d.code + "?")) return;
+                    (kept ? sb.from("discount_codes").update({ active: false }).eq("id", d.id) : sb.from("discount_codes").delete().eq("id", d.id)).then(ok)
+                      .then(function () { toast(kept ? "Switched off." : "Deleted."); renderDiscountsTab(view, c); }).catch(function (er) { toast(friendly(er), "error"); });
+                  }, "btn-danger"))));
             })))) : el("p", { class: "empty" }, "No discount codes yet."),
           c.entry_method === "yne" ? prioritySection(c) : null);
       });
@@ -1431,49 +1437,73 @@
     }).catch(function (e) { toast(friendly(e), "error"); });
   }
 
-  // Priority entry opens one day before general entry. Each email gets a personal, single-use link. Only a
-  // fingerprint is stored, so the links are shown once, here.
-  function editPriority(c, done) {
+  // ---- Priority entry: a list of people per competition, emailed their personal link automatically ----------------
+  // Paste the list once, any time before entry opens. When the priority window opens, the site makes each person's single-use
+  // link and emails it (the waitlist function's timer does this). "Send now" and "Send again" do it by hand for one person.
+  function parsePeople(text) {
+    var out = [], bad = [];
+    String(text || "").split(/\r?\n/).forEach(function (line) {
+      line = line.trim(); if (!line) return;
+      var m = line.match(/[^\s,;<>"]+@[^\s,;<>"]+\.[^\s,;<>"]+/);
+      if (!m) { bad.push(line); return; }
+      var name = line.replace(m[0], "").replace(/[<>",;\t]+/g, " ").replace(/\s+/g, " ").trim();
+      out.push({ email: m[0], name: name });
+    });
+    return { people: out, bad: bad };
+  }
+  function addPriority(c, done) {
     openForm({
-      title: "Priority entry: " + c.name, saveLabel: "Make links",
-      intro: "Priority entry opens one day before general entry" + (c.entry_opens ? " (" + whenText(Y.toLondonInput(new Date(new Date(c.entry_opens).getTime() - 86400000).toISOString())) + ")" : " (set the opening time first)") + ". Enter one email address per line. Each person gets a personal link that only works with their own email address. Making a new link for someone replaces their old unused one.",
-      fields: [{ name: "emails", label: "Email addresses (one per line)", type: "textarea", required: true }],
+      title: "Add people to the priority list", saveLabel: "Add to the list",
+      intro: "Their links are emailed to them automatically when priority entry opens. You can add people at any time before then, and again later.",
+      fields: [{ name: "people", label: "People, one per line", type: "textarea", rows: 10, required: true, help: "Email addresses. A name can come before the address, for example Sam Smith, sam@example.com. Pasting two columns from a spreadsheet works too." }],
       onSave: function (v) {
-        var list = v.emails.split(/[\s,;]+/).filter(Boolean);
-        if (!list.length) return Promise.reject(new Error("Enter at least one email address."));
-        return sb.rpc("create_priority_invites", { c: c.id, emails: list }).then(function (r) {
-          if (r.error) { var m = (r.error.message || "").trim(); throw new Error(/^invalid:email/.test(m) ? "That does not look like an email address: " + m.replace(/^invalid:email:/, "") : friendly(r.error)); }
-          setTimeout(function () { showPriorityLinks(c, r.data, done); }, 80);
+        var r = parsePeople(v.people);
+        if (r.bad.length) return Promise.reject(new Error("There is no email address on this line: " + r.bad[0]));
+        if (!r.people.length) return Promise.reject(new Error("Add at least one email address."));
+        return sb.rpc("priority_add", { c: c.id, people: r.people }).then(function (res) {
+          if (res.error) { var m = (res.error.message || "").trim(); throw new Error(/^invalid:email/.test(m) ? "That does not look like an email address: " + m.replace(/^invalid:email:/, "") : friendly(res.error)); }
+          toast(res.data + (res.data === 1 ? " person" : " people") + " added."); done();
         });
       }
     });
   }
-  function showPriorityLinks(c, rows, done) {
-    var text = rows.map(function (r) { return r.email + "  " + location.origin + "/enter?c=" + c.slug + "&invite=" + r.token; }).join("\n");
-    openForm({
-      title: "Priority links", saveLabel: "Done", values: { links: text },
-      intro: "Copy these now. They cannot be shown again. Send each person only their own link.",
-      fields: [{ name: "links", label: "One link per person", type: "textarea", rows: Math.min(14, rows.length + 2) }],
-      onSave: function () { if (done) done(); return Promise.resolve(); }
-    });
+  function sendPriority(c, inviteId, done) {
+    return sb.auth.getSession().then(function (s) {
+      var token = s.data && s.data.session && s.data.session.access_token;
+      return fetch((window.YNEPF_CONFIG.supabaseUrl || "").replace(/\/$/, "") + "/functions/v1/waitlist", { method: "POST", headers: { "Content-Type": "application/json", apikey: window.YNEPF_CONFIG.supabaseAnonKey || "", Authorization: "Bearer " + token }, body: JSON.stringify({ action: "priority_send", competition_id: c.id, invite_id: inviteId || undefined }) });
+    }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (b) { if (!r.ok) throw new Error(b.error === "not_allowed" ? "You do not have permission to do that." : "The email function did not answer. Check that the waitlist function has been updated in Supabase."); return b; }); })
+      .then(function (b) { toast(b.sent ? "Sent " + b.sent + (b.sent === 1 ? " link." : " links.") + (b.failed ? " " + b.failed + " could not be sent." : "") : (b.failed ? b.failed + " could not be sent." : "Nothing to send.")); done(); })
+      .catch(function (e) { toast(friendly(e), "error"); });
   }
-  // Who has a priority link, and whether they have used it. (A link can be shown only once, when it is made.)
   function prioritySection(c) {
-    var box = el("div", { class: "danger-free", style: "margin-top:var(--space-6)" });
+    var box = el("div", { style: "margin-top:var(--space-6)" });
     function load() {
-      box.replaceChildren(el("h2", null, "Priority entry links"), el("p", null, "Loading…"));
-      sb.from("invites").select("id,email,used_at,entry_id").eq("competition_id", c.id).order("email").then(ok).then(function (rows) {
-        var next = function () { load(); };
-        box.replaceChildren(el("h2", null, "Priority entry links"),
-          el("p", { class: "panel-intro" }, "A personal link lets someone enter one day before general entry opens. Make the links, then send each person their own."),
-          el("div", { class: "actions", style: "margin-bottom:var(--space-3)" }, btn("Make priority links", function () { editPriority(c, next); }, "btn-primary")),
+      box.replaceChildren(el("h2", null, "Priority entry"), el("p", null, "Loading…"));
+      Promise.all([
+        sb.from("invites").select("id,email,full_name,used_at,sent_at").eq("competition_id", c.id).order("email").then(ok),
+        sb.from("entry_settings").select("priority_hours").eq("competition_id", c.id).maybeSingle().then(function (r) { return r.error ? null : r.data; }, function () { return null; })
+      ]).then(function (res) {
+        var rows = res[0], hours = (res[1] && res[1].priority_hours) || 24, next = function () { load(); };
+        var start = c.entry_opens ? new Date(new Date(c.entry_opens).getTime() - hours * 3600 * 1000) : null;
+        var waiting = rows.filter(function (r) { return !r.used_at && !r.sent_at; });
+        function stamp(d) { return new Date(d).toLocaleString("en-GB", { timeZone: Y.TZ, dateStyle: "medium", timeStyle: "short" }); }
+        box.replaceChildren(el("h2", null, "Priority entry"),
+          el("p", { class: "panel-intro" }, start
+            ? "Everyone on this list is emailed their personal link automatically on " + stamp(start) + ", " + hours + " hours before general entry opens. They can enter from then."
+            : "Set when entry opens on the Details tab first. Links are emailed automatically " + hours + " hours before it."),
+          el("div", { class: "actions", style: "margin-bottom:var(--space-3)" },
+            btn("Add people", function () { addPriority(c, next); }, "btn-primary"),
+            waiting.length ? btn("Send to everyone waiting now", function () { if (!window.confirm("Email the link now to the " + waiting.length + (waiting.length === 1 ? " person" : " people") + " still waiting?")) return; sendPriority(c, null, next); }, "btn-secondary") : null),
           rows.length ? el("div", { class: "table-scroll" }, el("table", { class: "admin-table" },
-            el("thead", null, el("tr", null, ["Email", "Status", "Actions"].map(function (h) { return el("th", { scope: "col" }, h); }))),
+            el("thead", null, el("tr", null, ["Name", "Email", "Status", "Actions"].map(function (h) { return el("th", { scope: "col" }, h); }))),
             el("tbody", null, rows.map(function (r) {
-              return el("tr", null, el("th", { scope: "row" }, r.email), el("td", null, el("span", { class: r.used_at ? "tag tag-open" : "tag tag-position" }, r.used_at ? "Used: they have entered" : "Not used yet")),
-                el("td", null, r.used_at ? "" : el("span", { class: "actions" }, btn("Remove", function () { if (!window.confirm("Remove the link for " + r.email + "?")) return; sb.from("invites").delete().eq("id", r.id).then(ok).then(next).catch(function (e) { toast(friendly(e), "error"); }); }, "btn-danger"))));
-            })))) : el("p", { class: "empty" }, "No priority links made yet."));
-      }).catch(function (e) { box.replaceChildren(el("h2", null, "Priority entry links"), el("p", { class: "form-error" }, friendly(e))); });
+              var st = r.used_at ? ["Entered with their link", "tag tag-open"] : r.sent_at ? ["Link sent " + stamp(r.sent_at), "tag tag-position"] : [start && start <= new Date() ? "Sending shortly" : "Will be sent automatically", "tag tag-closed"];
+              return el("tr", null, el("th", { scope: "row" }, r.full_name || "—"), el("td", null, r.email), el("td", null, el("span", { class: st[1] }, st[0])),
+                el("td", null, r.used_at ? "" : el("span", { class: "actions" },
+                  btn(r.sent_at ? "Send again" : "Send now", function () { sendPriority(c, r.id, next); }),
+                  btn("Remove", function () { if (!window.confirm("Remove " + (r.full_name || r.email) + " from the list?" + (r.sent_at ? " Their link will stop working." : ""))) return; sb.from("invites").delete().eq("id", r.id).then(ok).then(next).catch(function (e) { toast(friendly(e), "error"); }); }, "btn-danger"))));
+            })))) : el("p", { class: "empty" }, "Nobody on the priority list yet."));
+      }).catch(function (e) { box.replaceChildren(el("h2", null, "Priority entry"), el("p", { class: "form-error" }, friendly(e))); });
     }
     load();
     return box;

@@ -164,6 +164,7 @@ create table if not exists public.entry_settings (
   flights_per_session integer not null default 2,
   guest_delay_days integer not null default 14 check (guest_delay_days between 0 and 90),   -- guests (outside our division) can enter this many days after entry opens
   offer_window_hours integer not null default 48,
+  priority_hours integer not null default 24 check (priority_hours between 1 and 336),   -- priority links work this long before general entry opens
   offer_reminder_hours integer not null default 12,
   offer_automatic boolean not null default true,          -- offer places automatically, or wait for "Offer next place"
   stripe_fee_policy text not null default 'federation' check (stripe_fee_policy in ('federation', 'pro_rata')),
@@ -469,6 +470,14 @@ create table if not exists public.invites (                -- priority entry (ph
   used_at timestamptz,
   entry_id uuid references public.entries (id) on delete set null          -- the entry started with this link
 );
+-- Priority entry: a list of people per competition. Their personal links are emailed automatically when the priority window
+-- opens (the link is made at that moment, so a row with no token_hash is "waiting to be sent").
+alter table public.entry_settings add column if not exists priority_hours integer not null default 24;
+alter table public.invites add column if not exists full_name text not null default '';
+alter table public.invites add column if not exists sent_at timestamptz;
+alter table public.invites alter column token_hash drop not null;
+update public.invites set sent_at = now() where sent_at is null and token_hash is not null;     -- links made by hand earlier count as sent
+
 alter table public.entries add column if not exists waiting_id uuid references public.waiting_list (id) on delete set null;
 
 -- A place offered to someone on the waiting list is theirs for the offer window, so it counts as taken.
@@ -950,7 +959,7 @@ begin
   if c.entries_closed_manually or coalesce(c.entry_closes, 'infinity') <= now() then raise exception 'closed'; end if;
   if c.entry_opens is not null and c.entry_opens > now() then
     -- Priority entry opens one day before general entry, for people with a personal link made for their email.
-    if c.entry_opens - interval '1 day' <= now() and coalesce(p->>'invite', '') <> '' then
+    if c.entry_opens - make_interval(hours => s.priority_hours) <= now() and coalesce(p->>'invite', '') <> '' then
       select i.id into v_invite from public.invites i
         where i.competition_id = c.id and i.email = v_email and i.used_at is null and (i.expires_at is null or i.expires_at > now())
           and i.token_hash = encode(sha256(convert_to(p->>'invite', 'UTF8')), 'hex');
@@ -1322,6 +1331,7 @@ declare
   v_method text := coalesce(p->>'entry_method', 'external');
   v_guest_days integer := coalesce((p->>'guest_delay_days')::int, 14);
   v_offer_hours integer := coalesce((p->>'offer_window_hours')::int, 48);
+  v_priority_hours integer := coalesce((p->>'priority_hours')::int, 24);
   v_ipf text := case when coalesce((p->>'openipf_required')::boolean, false) then 'required' else 'optional' end;
 begin
   if not public.is_entries() then raise exception 'forbidden'; end if;
@@ -1336,6 +1346,7 @@ begin
     if v_hold < 5 or v_hold > 30 then raise exception 'invalid:hold_minutes'; end if;
     if v_guest_days < 0 or v_guest_days > 90 then raise exception 'invalid:guest_delay_days'; end if;
     if v_offer_hours < 1 or v_offer_hours > 168 then raise exception 'invalid:offer_window_hours'; end if;
+    if v_priority_hours < 1 or v_priority_hours > 336 then raise exception 'invalid:priority_hours'; end if;
     if 'full_power' = any (v_events) and (v_full is null or v_full < 1) then raise exception 'invalid:price_full_power'; end if;
     if 'bench_only' = any (v_events) and (v_bench is null or v_bench < 1) then raise exception 'invalid:price_bench_only'; end if;
     if v_sj is not null and v_sj < 1 then raise exception 'invalid:price_sub_junior'; end if;
@@ -1346,13 +1357,13 @@ begin
     entries_closed_manually = coalesce((p->>'entries_closed_manually')::boolean, false),
     is_franchise = coalesce((p->>'is_franchise')::boolean, is_franchise)
     where id = c;
-  insert into public.entry_settings (competition_id, events, equipment, hold_minutes, openipf_mode, guest_delay_days, offer_window_hours, updated_at)
+  insert into public.entry_settings (competition_id, events, equipment, hold_minutes, openipf_mode, guest_delay_days, offer_window_hours, priority_hours, updated_at)
     values (c, case when cardinality(v_events) = 0 then array['full_power', 'bench_only'] else v_events end,
             case when cardinality(v_equip) = 0 then array['classic', 'equipped'] else v_equip end,
-            v_hold, v_ipf, v_guest_days, least(greatest(v_offer_hours, 1), 168), now())
+            v_hold, v_ipf, v_guest_days, least(greatest(v_offer_hours, 1), 168), least(greatest(v_priority_hours, 1), 336), now())
     on conflict (competition_id) do update set events = excluded.events, equipment = excluded.equipment,
       hold_minutes = excluded.hold_minutes, openipf_mode = excluded.openipf_mode, guest_delay_days = excluded.guest_delay_days,
-      offer_window_hours = excluded.offer_window_hours, updated_at = now();
+      offer_window_hours = excluded.offer_window_hours, priority_hours = excluded.priority_hours, updated_at = now();
 
   if v_method = 'yne' then
     delete from public.price_rules where competition_id = c;
@@ -1389,13 +1400,80 @@ begin
     if e !~ '^[^@\s]+@[^@\s]+\.[^@\s]+$' then raise exception 'invalid:email:%', e; end if;
     delete from public.invites i where i.competition_id = c and i.email = e and i.used_at is null;
     t := replace(gen_random_uuid()::text, '-', '') || replace(gen_random_uuid()::text, '-', '');
-    insert into public.invites (competition_id, email, token_hash) values (c, e, encode(sha256(convert_to(t, 'UTF8')), 'hex'));
+    insert into public.invites (competition_id, email, token_hash, sent_at) values (c, e, encode(sha256(convert_to(t, 'UTF8')), 'hex'), now());
     email := e; token := t; return next;
   end loop;
 end
 $$;
 revoke all on function public.create_priority_invites(uuid, text[]) from public, anon;
 grant execute on function public.create_priority_invites(uuid, text[]) to authenticated;
+
+-- Priority list: add people (email and optional name) without making their link yet. The link is made and emailed by the
+-- waitlist function's timer when the priority window opens (or at once, from "Send now").
+create or replace function public.priority_add(c uuid, people jsonb) returns integer
+language plpgsql security definer set search_path = public
+as $$
+declare p jsonb; e text; n text; cnt integer := 0; seen text[] := '{}';
+begin
+  if not public.is_entries() then raise exception 'forbidden'; end if;
+  if not exists (select 1 from public.competitions where id = c) then raise exception 'not_found'; end if;
+  if jsonb_typeof(people) <> 'array' or jsonb_array_length(people) > 500 then raise exception 'invalid:people'; end if;
+  for p in select * from jsonb_array_elements(people) loop
+    e := lower(trim(coalesce(p->>'email', ''))); n := trim(coalesce(p->>'name', ''));
+    if e !~ '^[^@\s]+@[^@\s]+\.[^@\s]+$' then raise exception 'invalid:email:%', e; end if;
+    if exists (select 1 from public.invites i where i.competition_id = c and i.email = e and i.used_at is not null) then continue; end if;   -- already entered with a link
+    delete from public.invites i where i.competition_id = c and i.email = e and i.used_at is null;
+    insert into public.invites (competition_id, email, full_name) values (c, e, left(n, 120));
+    if not (e = any (seen)) then cnt := cnt + 1; seen := seen || e; end if;
+  end loop;
+  return cnt;
+end
+$$;
+revoke all on function public.priority_add(uuid, jsonb) from public, anon;
+grant execute on function public.priority_add(uuid, jsonb) to authenticated;
+
+-- Competitions with priority links waiting to be sent whose priority window has opened (what the timer works through).
+create or replace function public.priority_competitions() returns jsonb
+language sql stable security definer set search_path = public
+as $$
+  select coalesce(jsonb_agg(distinct i.competition_id), '[]'::jsonb)
+    from public.invites i join public.competitions c on c.id = i.competition_id
+    left join public.entry_settings s on s.competition_id = c.id
+   where i.token_hash is null and i.used_at is null and c.entry_opens is not null
+     and c.entry_opens - make_interval(hours => coalesce(s.priority_hours, 24)) <= now()
+     and not c.entries_closed_manually and coalesce(c.entry_closes, 'infinity') > now()
+$$;
+
+-- Who to send to: those still waiting (the timer), or the ones asked for by hand (a person, or everybody waiting).
+create or replace function public.priority_pending(c uuid, only_id uuid default null, include_sent boolean default false) returns jsonb
+language sql stable security definer set search_path = public
+as $$
+  select coalesce(jsonb_agg(jsonb_build_object('id', i.id, 'email', i.email, 'name', i.full_name) order by i.email), '[]'::jsonb)
+    from public.invites i
+   where i.competition_id = c and i.used_at is null
+     and (only_id is null or i.id = only_id)
+     and (i.token_hash is null or (include_sent and only_id is not null))
+$$;
+
+-- Makes the link (only its hash is kept). force replaces a link that was already sent.
+create or replace function public.priority_issue(iid uuid, th text, force boolean default false) returns void
+language plpgsql security definer set search_path = public
+as $$
+begin
+  update public.invites set token_hash = th, sent_at = now() where id = iid and used_at is null and (token_hash is null or force);
+  if not found then raise exception 'not_waiting'; end if;
+end
+$$;
+-- If the email could not be sent, go back to "waiting to be sent" so the next check tries again.
+create or replace function public.priority_unissue(iid uuid) returns void
+language sql security definer set search_path = public
+as $$ update public.invites set token_hash = null, sent_at = null where id = iid and used_at is null $$;
+revoke all on function public.priority_competitions(), public.priority_pending(uuid, uuid, boolean), public.priority_issue(uuid, text, boolean), public.priority_unissue(uuid) from public, anon, authenticated;
+do $$ begin
+  if exists (select 1 from pg_roles where rolname = 'service_role') then
+    grant execute on function public.priority_competitions(), public.priority_pending(uuid, uuid, boolean), public.priority_issue(uuid, text, boolean), public.priority_unissue(uuid) to service_role;
+  end if;
+end $$;
 
 -- ---------------------------------------------------------------------------
 -- 19. Manual entries (entries team only)

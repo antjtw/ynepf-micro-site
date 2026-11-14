@@ -549,7 +549,7 @@
         if (st.entries_closed_manually || (comp.entry_closes && new Date(comp.entry_closes) <= now)) return stop("Entries are closed", "<p>Entries for " + Y.el("span", null, comp.name).textContent + " are closed.</p>");
         var opensAt = comp.entry_opens ? new Date(comp.entry_opens) : null, priority = false;
         if (opensAt && opensAt > now) {
-          var priorityFrom = new Date(opensAt.getTime() - 24 * 3600 * 1000), when = function (d) { return d.toLocaleString("en-GB", { timeZone: Y.TZ, dateStyle: "full", timeStyle: "short" }); };
+          var priorityFrom = new Date(opensAt.getTime() - (settings.priority_hours || 24) * 3600 * 1000), when = function (d) { return d.toLocaleString("en-GB", { timeZone: Y.TZ, dateStyle: "full", timeStyle: "short" }); };
           if (!(invite && now >= priorityFrom)) return stop("Entries are not open yet", "<p>Entries open on " + when(opensAt) + ".</p>" + (invite ? "<p>Your priority link works from " + when(priorityFrom) + ".</p>" : ""));
           priority = true;
         }

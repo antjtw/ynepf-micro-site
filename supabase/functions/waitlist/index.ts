@@ -3,8 +3,10 @@
 //   join   Someone joins the waiting list for a full competition (name and email). They get an email with their place in the queue.
 //   offer  The entry page asks "does this offer link work?" and, if so, gets the name and email to fill in.
 //   run    Looks after every waiting list: ends offers that ran out (and emails), sends the one reminder, and offers
-//          free places to the people who have waited longest (and emails them a personal link). It is run on a timer
+//          free places to the people who have waited longest (and emails them a personal link). It also emails priority
+//          entry links to everyone on a competition's priority list once the priority window opens. It is run on a timer
 //          (see docs/entry-system/schedule-waitlist.sql) and by the entries team's "Check now" button.
+//   priority_send  The entries team sends priority links now (to one person or everyone still waiting), or sends a fresh link to someone.
 //
 // ONE self-contained file: paste it in as index.ts. Deploy with "Verify JWT" switched OFF (the checks are inside).
 //
@@ -76,6 +78,16 @@ export function expiredEmail(o: Who & { slug: string; siteUrl: string }) {
   ]);
 }
 
+export function priorityEmail(o: Who & { link: string; windowStart: string; opens?: string }) {
+  return sign(o, [
+    `Hi ${o.name || "there"},`, "",
+    `You can enter ${o.competition}${o.date ? ` (${o.date})` : ""} early, with priority entry.`, "",
+    `Your personal link works from ${when(o.windowStart)} (UK time)${o.opens ? `, before general entry opens on ${when(o.opens)}` : ""}:`,
+    o.link, "",
+    "Please enter with the email address this message was sent to, and keep the link to yourself: it only works once. You can still enter when general entry opens if you would rather wait.",
+  ]);
+}
+
 // Joining is limited so the list cannot be flooded: a handful of tries per address, per few minutes.
 const tries: Record<string, number[]> = {};
 export function allowTry(key: string, now = Date.now(), max = 6, windowMs = 10 * 60 * 1000): boolean {
@@ -107,13 +119,31 @@ if (typeof Deno !== "undefined") {
       return r.ok;
     };
     const comp = async (id: string) => {
-      const r = await fetch(`${url}/rest/v1/competitions?id=eq.${encodeURIComponent(id)}&select=id,name,slug,start_date`, { headers: H });
+      const r = await fetch(`${url}/rest/v1/competitions?id=eq.${encodeURIComponent(id)}&select=id,name,slug,start_date,entry_opens`, { headers: H });
       const [c] = await r.json().catch(() => []);
-      return c as { id: string; name: string; slug: string; start_date: string } | undefined;
+      return c as { id: string; name: string; slug: string; start_date: string; entry_opens: string | null } | undefined;
     };
     const dateText = (d?: string) => d ? new Date(d).toLocaleDateString("en-GB", { timeZone: "Europe/London", dateStyle: "long" }) : undefined;
     const ip = (req.headers.get("x-forwarded-for") ?? "").split(",")[0];
     const action = String(body.action ?? "");
+
+    // Makes each person's personal link (only its hash is kept) and emails it. If the email fails the person goes back to
+    // "waiting to be sent" and the next check tries again.
+    const sendPriority = async (c: { id: string; name: string; slug: string; start_date: string; entry_opens: string | null }, people: { id: string; email: string; name: string }[], force: boolean) => {
+      const sres = await fetch(`${url}/rest/v1/entry_settings?competition_id=eq.${encodeURIComponent(c.id)}&select=priority_hours`, { headers: H });
+      const [st] = await sres.json().catch(() => []);
+      const hours = Number(st?.priority_hours ?? 24);
+      const windowStart = c.entry_opens ? new Date(new Date(c.entry_opens).getTime() - hours * 3600 * 1000).toISOString() : new Date().toISOString();
+      let sent = 0, failed = 0;
+      for (const p of people) {
+        const tok = newToken();
+        const iss = await rpc("priority_issue", { iid: p.id, th: await sha256Hex(tok), force });
+        if (!iss.ok) { console.error("priority link not made", await iss.text()); failed++; continue; }
+        const ok = await send(p.email, `Your priority entry link: ${c.name}`, priorityEmail({ name: p.name, competition: c.name, date: dateText(c.start_date), entriesEmail: copy, link: offerLink(siteUrl, c.slug, tok).replace("&offer=", "&invite="), windowStart, opens: c.entry_opens ?? undefined }));
+        if (ok) sent++; else { failed++; await rpc("priority_unissue", { iid: p.id }); }
+      }
+      return { sent, failed };
+    };
 
     // ---- someone joins ----------------------------------------------------------------------------------------
     if (action === "join") {
@@ -164,7 +194,7 @@ if (typeof Deno !== "undefined") {
       const listRes = await rpc("waitlist_competitions", {});
       let ids: string[] = await listRes.json().catch(() => []);
       if (body.competition_id) ids = ids.filter((i) => i === body.competition_id);
-      const done = { offers: 0, reminders: 0, expired: 0, failed: 0 };
+      const done = { offers: 0, reminders: 0, expired: 0, failed: 0, priority: 0 };
       for (const id of ids) {
         const c = await comp(id);
         if (!c) continue;
@@ -187,7 +217,34 @@ if (typeof Deno !== "undefined") {
           else { done.failed++; await rpc("waitlist_unoffer", { wid: n.waiting_id }); }   // keep their place in the queue; try again next time
         }
       }
+      // Priority entry links for competitions whose priority window has opened.
+      if (!body.competition_id) {
+        const pids: string[] = await (await rpc("priority_competitions", {})).json().catch(() => []);
+        for (const id of Array.isArray(pids) ? pids : []) {
+          const c = await comp(id); if (!c) continue;
+          const people: { id: string; email: string; name: string }[] = await (await rpc("priority_pending", { c: id })).json().catch(() => []);
+          const r = await sendPriority(c, Array.isArray(people) ? people : [], false);
+          done.priority += r.sent; done.failed += r.failed;
+        }
+      }
       return reply(200, { ok: true, ...done });
+    }
+
+    // ---- the entries team sends priority links now ------------------------------------------------------------------
+    if (action === "priority_send") {
+      const token = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
+      let allowed = false;
+      if (token && token !== anon) {
+        const who = await fetch(`${url}/rest/v1/rpc/is_entries`, { method: "POST", headers: { apikey: anon!, authorization: `Bearer ${token}`, "content-type": "application/json" }, body: "{}" });
+        allowed = who.ok && (await who.json()) === true;
+      }
+      if (!allowed) return reply(401, { error: "not_allowed" });
+      const c = await comp(String(body.competition_id ?? ""));
+      if (!c) return reply(404, { error: "not_found" });
+      const only = body.invite_id ? String(body.invite_id) : null;
+      const people: { id: string; email: string; name: string }[] = await (await rpc("priority_pending", { c: c.id, only_id: only, include_sent: !!only })).json().catch(() => []);
+      const r = await sendPriority(c, Array.isArray(people) ? people : [], !!only);
+      return reply(200, { ok: true, ...r });
     }
 
     return reply(400, { error: "bad_request" });
